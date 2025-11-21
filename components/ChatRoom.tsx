@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { BotControl } from './BotControl';
 import { MessageType, Message, BotType, MessageStatus } from '../types';
-import { generateBotResponse, checkModeration } from '../services/geminiService';
+import { generateBotResponse, checkModeration, polishDraft, editChatImage } from '../services/geminiService';
 import { BOTS } from '../constants';
 
 // Sound Effect
@@ -35,7 +35,13 @@ export const ChatRoom: React.FC = () => {
   const [showBotPanel, setShowBotPanel] = useState(false);
   const [showStickers, setShowStickers] = useState(false);
   const [showAttachMenu, setShowAttachMenu] = useState(false);
+  const [isPolishing, setIsPolishing] = useState(false);
   
+  // Image Editing State
+  const [imageToEdit, setImageToEdit] = useState<{id: string, content: string} | null>(null);
+  const [editPrompt, setEditPrompt] = useState('');
+  const [isEditingImage, setIsEditingImage] = useState(false);
+
   // Interaction States
   const [isTyping, setIsTyping] = useState(false);
   const [showCreatedModal, setShowCreatedModal] = useState(false);
@@ -158,6 +164,31 @@ export const ChatRoom: React.FC = () => {
     setInputText('');
     setShowStickers(false);
     setShowAttachMenu(false);
+  };
+
+  const handleMagicPolish = async () => {
+    if (!inputText.trim()) return;
+    setIsPolishing(true);
+    const polished = await polishDraft(inputText);
+    setInputText(polished);
+    setIsPolishing(false);
+    showToast("Draft polished! ✨");
+  };
+
+  const handleImageEditSubmit = async () => {
+    if (!imageToEdit || !editPrompt.trim()) return;
+    setIsEditingImage(true);
+    const newImage = await editChatImage(imageToEdit.content, editPrompt);
+    setIsEditingImage(false);
+    
+    if (newImage) {
+        sendMessage(newImage, MessageType.IMAGE);
+        setImageToEdit(null);
+        setEditPrompt('');
+        showToast("Image edited successfully! 🎨");
+    } else {
+        showToast("Failed to edit image.");
+    }
   };
 
   const handleStickerClick = (sticker: string) => {
@@ -288,7 +319,18 @@ export const ChatRoom: React.FC = () => {
         case MessageType.STICKER:
             return <div className="text-6xl drop-shadow-lg animate-pop-in">{msg.content}</div>;
         case MessageType.IMAGE:
-            return <img src={msg.content} alt="Attachment" className="max-w-full rounded-lg max-h-64 object-cover" loading="lazy"/>;
+            return (
+              <div className="relative group/image">
+                 <img src={msg.content} alt="Attachment" className="max-w-full rounded-lg max-h-64 object-cover" loading="lazy"/>
+                 <button 
+                    onClick={(e) => { e.stopPropagation(); setImageToEdit({id: msg.id, content: msg.content}); }}
+                    className="absolute top-2 right-2 bg-white/90 text-gray-800 p-1.5 rounded-full shadow-md opacity-0 group-hover/image:opacity-100 transition-opacity"
+                    title="AI Edit"
+                 >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4"><path fillRule="evenodd" d="M9 4.5a.75.75 0 01.721.544l.813 2.846a3.75 3.75 0 002.576 2.576l2.846.813a.75.75 0 010 1.442l-2.846.813a3.75 3.75 0 00-2.576 2.576l-.813 2.846a.75.75 0 01-1.442 0l-.813-2.846a3.75 3.75 0 00-2.576-2.576l-2.846-.813a.75.75 0 010-1.442l2.846-.813a3.75 3.75 0 002.576-2.576L8.279 5.044A.75.75 0 019 4.5zM18 15a.75.75 0 01.728.568l.258 1.036c.236.94.97 1.674 1.91 1.91l1.036.258a.75.75 0 010 1.456l-1.036.258c-.94.236-1.674.97-1.91 1.91l-.258 1.036a.75.75 0 01-1.456 0l-.258-1.036a2.625 2.625 0 00-1.91-1.91l-1.036-.258a.75.75 0 010-1.456l1.036-.258a2.625 2.625 0 001.91-1.91l.258-1.036A.75.75 0 0118 15zM16.5 2.25a.75.75 0 01.728.568l.258 1.036c.236.94.97 1.674 1.91 1.91l1.036.258a.75.75 0 010 1.456l-1.036.258c-.94.236-1.674.97-1.91 1.91l-.258 1.036a.75.75 0 01-1.456 0l-.258-1.036a2.625 2.625 0 00-1.91-1.91l-1.036-.258a.75.75 0 010-1.456l1.036-.258a2.625 2.625 0 001.91-1.91l.258-1.036A.75.75 0 0116.5 2.25z" clipRule="evenodd" /></svg>
+                 </button>
+              </div>
+            );
         case MessageType.VIDEO:
             return (
                 <video controls playsInline className="max-w-full rounded-lg max-h-64 bg-black">
@@ -473,6 +515,16 @@ export const ChatRoom: React.FC = () => {
             <form onSubmit={handleSend} className="flex-1">
                 <input type="text" value={inputText} onChange={(e) => setInputText(e.target.value)} placeholder="Type a message..." className="w-full bg-transparent border-none focus:ring-0 text-gray-900 dark:text-white placeholder-gray-500 py-3 px-2" />
             </form>
+            {inputText && (
+              <button 
+                onClick={handleMagicPolish} 
+                disabled={isPolishing}
+                className={`p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition ${isPolishing ? 'text-purple-300 animate-pulse' : 'text-purple-500'}`}
+                title="Magic Polish"
+              >
+                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path fillRule="evenodd" d="M9 4.5a.75.75 0 01.721.544l.813 2.846a3.75 3.75 0 002.576 2.576l2.846.813a.75.75 0 010 1.442l-2.846.813a3.75 3.75 0 00-2.576 2.576l-.813 2.846a.75.75 0 01-1.442 0l-.813-2.846a3.75 3.75 0 00-2.576-2.576l-2.846-.813a.75.75 0 010-1.442l2.846-.813a3.75 3.75 0 002.576-2.576L8.279 5.044A.75.75 0 019 4.5zM18 15a.75.75 0 01.728.568l.258 1.036c.236.94.97 1.674 1.91 1.91l1.036.258a.75.75 0 010 1.456l-1.036.258c-.94.236-1.674.97-1.91 1.91l-.258 1.036a.75.75 0 01-1.456 0l-.258-1.036a2.625 2.625 0 00-1.91-1.91l-1.036-.258a.75.75 0 010-1.456l1.036-.258a2.625 2.625 0 001.91-1.91l.258-1.036A.75.75 0 0118 15zM16.5 2.25a.75.75 0 01.728.568l.258 1.036c.236.94.97 1.674 1.91 1.91l1.036.258a.75.75 0 010 1.456l-1.036.258c-.94.236-1.674.97-1.91 1.91l-.258 1.036a.75.75 0 01-1.456 0l-.258-1.036a2.625 2.625 0 00-1.91-1.91l-1.036-.258a.75.75 0 010-1.456l1.036-.258a2.625 2.625 0 001.91-1.91l.258-1.036A.75.75 0 0116.5 2.25z" clipRule="evenodd" /></svg>
+              </button>
+            )}
         </div>
 
         {inputText ? (
@@ -495,6 +547,33 @@ export const ChatRoom: React.FC = () => {
       )}
 
       {showBotPanel && <BotControl onClose={() => setShowBotPanel(false)} />}
+
+      {/* Image Edit Modal */}
+      {imageToEdit && (
+         <div className="absolute inset-0 z-50 bg-black/80 flex items-center justify-center px-4 animate-fade-in">
+            <div className="bg-white dark:bg-gray-800 rounded-3xl p-4 w-full max-w-sm shadow-2xl space-y-4">
+               <h3 className="text-lg font-bold text-gray-900 dark:text-white">AI Image Edit</h3>
+               <img src={imageToEdit.content} alt="To edit" className="w-full h-48 object-cover rounded-lg opacity-80" />
+               <input 
+                  type="text" 
+                  value={editPrompt} 
+                  onChange={(e) => setEditPrompt(e.target.value)} 
+                  placeholder="e.g. Add a retro filter..." 
+                  className="w-full p-3 rounded-xl bg-gray-100 dark:bg-gray-700 border-none"
+               />
+               <div className="flex space-x-3">
+                  <button onClick={() => setImageToEdit(null)} className="flex-1 py-3 bg-gray-200 dark:bg-gray-700 rounded-xl font-bold">Cancel</button>
+                  <button 
+                    onClick={handleImageEditSubmit} 
+                    disabled={isEditingImage || !editPrompt}
+                    className="flex-1 py-3 bg-cheza-blue text-white rounded-xl font-bold flex justify-center items-center"
+                  >
+                     {isEditingImage ? <span className="animate-spin mr-2">⏳</span> : '✨ Generate'}
+                  </button>
+               </div>
+            </div>
+         </div>
+      )}
 
       {showCreatedModal && (
         <div className="absolute inset-0 z-50 bg-black/60 flex items-center justify-center px-4 animate-fade-in">

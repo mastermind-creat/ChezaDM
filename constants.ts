@@ -34,9 +34,9 @@ export const BOTS: Record<BotType, BotConfig> = {
   [BotType.HELPER]: {
     type: BotType.HELPER,
     name: "Rafiki AI",
-    description: "General assistant for questions.",
+    description: "Smart assistant with Google Search.",
     icon: "🤖",
-    systemInstruction: "You are Rafiki, a helpful AI assistant in a chat app. Answer questions briefly and helpfully."
+    systemInstruction: "You are Rafiki, a smart AI assistant in a chat app. You have access to Google Search to provide up-to-date information. Answer questions helpfully and concisely. If you use search results, the system will automatically attach the links, so just focus on the answer."
   }
 };
 
