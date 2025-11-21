@@ -1,0 +1,5 @@
+{
+  "name": "ChezaDM",
+  "description": "A lightweight, mobile-first Kenyan PWA for private and group chats with AI-powered bots.",
+  "requestFramePermissions": []
+}

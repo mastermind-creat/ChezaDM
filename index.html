@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>ChezaDM</title>
+    <meta name="description" content="Secure, fast, Kenyan-style messaging." />
+    
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#007BFF" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="manifest" href="/manifest.json" />
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              cheza: {
+                blue: '#007BFF', // Electric Blue
+                green: '#00E676', // Mint Green
+                yellow: '#FFC107', // Warm Yellow
+                black: '#121212', // Kenyan Black (Dark Charcoal)
+                light: '#F8F9FA',
+              }
+            },
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+            },
+            animation: {
+              'bounce-short': 'bounce 0.5s infinite',
+              'slide-up': 'slideUp 0.3s ease-out',
+              'pop-in': 'popIn 0.2s ease-out',
+            },
+            keyframes: {
+              slideUp: {
+                '0%': { transform: 'translateY(100%)', opacity: '0' },
+                '100%': { transform: 'translateY(0)', opacity: '1' },
+              },
+              popIn: {
+                '0%': { transform: 'scale(0.8)', opacity: '0' },
+                '100%': { transform: 'scale(1)', opacity: '1' },
+              }
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      /* Custom Scrollbar for Webkit */
+      ::-webkit-scrollbar {
+        width: 4px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent; 
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #94a3b8; 
+        border-radius: 2px;
+      }
+      /* Safe area padding for notched phones */
+      .pb-safe {
+        padding-bottom: env(safe-area-inset-bottom);
+      }
+      .pt-safe {
+        padding-top: env(safe-area-inset-top);
+      }
+      .h-safe-top {
+        height: env(safe-area-inset-top);
+      }
+      .h-safe-bottom {
+        height: env(safe-area-inset-bottom);
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0"
+  }
+}
+</script>
+</head>
+  <body class="bg-cheza-light text-gray-900 dark:bg-cheza-black dark:text-gray-100 antialiased overflow-hidden fixed w-full h-full">
+    <div id="root" class="w-full h-full flex flex-col"></div>
+  </body>
+</html>
