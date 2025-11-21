@@ -16,6 +16,12 @@ export enum MessageType {
   STICKER = 'STICKER',
 }
 
+export enum MessageStatus {
+  SENT = 'SENT',
+  PENDING = 'PENDING', // For offline queuing
+  ERROR = 'ERROR'
+}
+
 export interface Message {
   id: string;
   roomId: string;
@@ -24,6 +30,7 @@ export interface Message {
   content: string;
   timestamp: number;
   type: MessageType;
+  status?: MessageStatus; // Track delivery status
   isBot?: boolean;
   botType?: BotType;
   // Map of emoji char to array of userIds who reacted
