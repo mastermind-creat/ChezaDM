@@ -1,12 +1,14 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, Room, Message, MessageType, RoomType, BotType, MessageStatus } from '../types';
+import { generateUUID } from '../utils';
 
 interface AppContextType {
   currentUser: User | null;
   currentRoom: Room | null;
   messages: Message[];
-  login: (name: string) => void;
+  login: (name: string, avatarUrl?: string) => void;
+  updateUser: (updates: Partial<User>) => void;
   createRoom: (type: RoomType) => void;
   joinRoom: (roomId: string) => void;
   leaveRoom: () => void;
@@ -32,17 +34,21 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
   // 1. Load User & Cached Data on Mount
   useEffect(() => {
-    const savedUser = localStorage.getItem('cheza_user');
-    if (savedUser) setCurrentUser(JSON.parse(savedUser));
+    try {
+        const savedUser = localStorage.getItem('cheza_user');
+        if (savedUser) setCurrentUser(JSON.parse(savedUser));
 
-    // Cache recovery
-    const savedRoom = localStorage.getItem('cheza_active_room');
-    const savedMessages = localStorage.getItem('cheza_active_messages');
-    const savedQueue = localStorage.getItem('cheza_offline_queue');
+        // Cache recovery
+        const savedRoom = localStorage.getItem('cheza_active_room');
+        const savedMessages = localStorage.getItem('cheza_active_messages');
+        const savedQueue = localStorage.getItem('cheza_offline_queue');
 
-    if (savedRoom) setCurrentRoom(JSON.parse(savedRoom));
-    if (savedMessages) setMessages(JSON.parse(savedMessages));
-    if (savedQueue) setPendingQueue(JSON.parse(savedQueue));
+        if (savedRoom) setCurrentRoom(JSON.parse(savedRoom));
+        if (savedMessages) setMessages(JSON.parse(savedMessages));
+        if (savedQueue) setPendingQueue(JSON.parse(savedQueue));
+    } catch (e) {
+        console.error("Failed to load cached data", e);
+    }
 
     // Network Listeners
     const handleOnline = () => {
@@ -62,12 +68,16 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
   // 2. Persistence Effects
   useEffect(() => {
-    if (currentRoom) {
-      localStorage.setItem('cheza_active_room', JSON.stringify(currentRoom));
-      localStorage.setItem('cheza_active_messages', JSON.stringify(messages));
-    } else {
-      localStorage.removeItem('cheza_active_room');
-      localStorage.removeItem('cheza_active_messages');
+    try {
+        if (currentRoom) {
+          localStorage.setItem('cheza_active_room', JSON.stringify(currentRoom));
+          localStorage.setItem('cheza_active_messages', JSON.stringify(messages));
+        } else {
+          localStorage.removeItem('cheza_active_room');
+          localStorage.removeItem('cheza_active_messages');
+        }
+    } catch (e) {
+        console.error("Failed to save chat state (Quota Exceeded?)", e);
     }
   }, [currentRoom, messages]);
 
@@ -91,15 +101,38 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     });
   };
 
-  const login = (name: string) => {
+  const login = (name: string, avatarUrl?: string) => {
+    const safeName = name || `Guest-${Math.floor(Math.random() * 10000)}`;
+    
+    // Use provided avatar, or generate one using DiceBear v9
+    const finalAvatar = avatarUrl || `https://api.dicebear.com/9.x/avataaars/svg?seed=${encodeURIComponent(safeName)}`;
+
     const user: User = {
-      id: crypto.randomUUID(),
-      name: name || `Guest-${Math.floor(Math.random() * 10000)}`,
+      id: generateUUID(),
+      name: safeName,
       isAnonymous: !name,
-      avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${name}`
+      avatarUrl: finalAvatar
     };
-    localStorage.setItem('cheza_user', JSON.stringify(user));
+    
+    try {
+      localStorage.setItem('cheza_user', JSON.stringify(user));
+    } catch (e) {
+      console.error("Storage Error (likely image too big)", e);
+      alert("Note: Profile image too large to save offline, but you can chat normally.");
+    }
     setCurrentUser(user);
+  };
+
+  const updateUser = (updates: Partial<User>) => {
+    if (!currentUser) return;
+    const updatedUser = { ...currentUser, ...updates };
+    setCurrentUser(updatedUser);
+    try {
+        localStorage.setItem('cheza_user', JSON.stringify(updatedUser));
+    } catch (e) {
+        console.error("Failed to update user profile storage", e);
+        alert("Could not save profile changes to storage. (Image too large?)");
+    }
   };
 
   const createRoom = (type: RoomType) => {
@@ -167,7 +200,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     setMessages([]); 
     
     const sysMsg: Message = {
-      id: crypto.randomUUID(),
+      id: generateUUID(),
       roomId: room.id,
       senderId: 'system',
       senderName: 'System',
@@ -199,7 +232,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     const status = isOnline ? MessageStatus.SENT : MessageStatus.PENDING;
 
     const msg: Message = {
-      id: crypto.randomUUID(),
+      id: generateUUID(),
       roomId: currentRoom.id,
       senderId: currentUser.id,
       senderName: currentUser.name,
@@ -216,7 +249,11 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     if (!isOnline) {
       const newQueue = [...pendingQueue, msg];
       setPendingQueue(newQueue);
-      localStorage.setItem('cheza_offline_queue', JSON.stringify(newQueue));
+      try {
+        localStorage.setItem('cheza_offline_queue', JSON.stringify(newQueue));
+      } catch (e) {
+        console.error("Queue storage full", e);
+      }
     }
   };
 
@@ -257,7 +294,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     });
 
     const sysMsg: Message = {
-        id: crypto.randomUUID(),
+        id: generateUUID(),
         roomId: currentRoom.id,
         senderId: 'system',
         senderName: 'System',
@@ -285,6 +322,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       currentRoom, 
       messages, 
       login, 
+      updateUser,
       createRoom,
       joinRoom, 
       leaveRoom, 

@@ -1,10 +1,20 @@
+
 import { GoogleGenAI } from "@google/genai";
 import { BotType, Message } from "../types";
 import { BOTS } from "../constants";
 
-// Initialize Gemini API
-const apiKey = process.env.API_KEY || '';
-const ai = new GoogleGenAI({ apiKey });
+// Initialize Gemini API with browser safety check and default to empty string if missing
+const getApiKey = () => {
+  if (typeof process !== 'undefined' && process.env && process.env.API_KEY) {
+    return process.env.API_KEY;
+  }
+  return '';
+};
+
+const apiKey = getApiKey();
+// Only initialize if we have a key or handled safely. 
+// Note: Requests will fail without a key, but app shouldn't crash on load.
+const ai = new GoogleGenAI({ apiKey: apiKey || 'dummy-key' });
 
 export const generateBotResponse = async (
   botType: BotType,
@@ -12,7 +22,7 @@ export const generateBotResponse = async (
   chatHistory: Message[] = []
 ): Promise<string> => {
   if (!apiKey) {
-    return "Error: API Key not configured.";
+    return "Error: API Key not configured in environment.";
   }
 
   const botConfig = BOTS[botType];
