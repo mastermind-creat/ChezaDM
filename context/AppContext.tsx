@@ -14,10 +14,11 @@ interface AppContextType {
   createRoom: (type: RoomType) => void;
   joinRoom: (roomId: string) => void;
   leaveRoom: () => void;
-  sendMessage: (content: string, type?: MessageType) => void;
+  sendMessage: (content: string, type?: MessageType, replyTo?: string) => void;
+  editMessage: (messageId: string, newContent: string) => void;
+  deleteMessage: (messageId: string) => void;
   addBotToRoom: (botType: BotType) => void;
   removeBotFromRoom: (botType: BotType) => void;
-  addMessage: (msg: Message) => void;
   addReaction: (messageId: string, emoji: string) => void;
   isRoomAdmin: boolean;
   isOnline: boolean;
@@ -28,6 +29,8 @@ interface AppContextType {
   connectionError: string | null;
   theme: ThemeType;
   setAppTheme: (t: ThemeType) => void;
+  chatBg: string;
+  setChatBg: (url: string) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -40,6 +43,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [isConnecting, setIsConnecting] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [theme, setTheme] = useState<ThemeType>('light');
+  const [chatBg, setChatBgState] = useState('');
   
   const [peers, setPeers] = useState<string[]>([]);
   const [typingUsers, setTypingUsers] = useState<Record<string, string>>({});
@@ -52,6 +56,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       if (savedUser) setCurrentUser(JSON.parse(savedUser));
       const savedTheme = localStorage.getItem('cheza_theme') as ThemeType;
       if (savedTheme) setTheme(savedTheme);
+      const savedBg = localStorage.getItem('cheza_chat_bg');
+      if (savedBg) setChatBgState(savedBg);
     } catch (e) {}
 
     const handleOnline = () => setIsOnline(true);
@@ -66,46 +72,24 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     if (!currentUser) return;
-    const peerId = currentUser.id;
-    peerInstance.current = new Peer(peerId, {
+    peerInstance.current = new Peer(currentUser.id, {
       debug: 1,
-      config: {
-        'iceServers': [{ 'urls': 'stun:stun.l.google.com:19302' }, { 'urls': 'stun:stun1.l.google.com:19302' }]
-      }
+      config: { 'iceServers': [{ 'urls': 'stun:stun.l.google.com:19302' }, { 'urls': 'stun:stun1.l.google.com:19302' }] }
     });
-
-    peerInstance.current.on('connection', (conn: any) => {
-      setupConnection(conn);
-    });
-
+    peerInstance.current.on('connection', setupConnection);
     peerInstance.current.on('error', (err: any) => {
-      console.error('Peer error:', err);
-      if (isConnecting) {
-        setConnectionError("Failed to connect. Check ID.");
-        setIsConnecting(false);
-      }
+      if (isConnecting) { setConnectionError("Peer error: " + err.type); setIsConnecting(false); }
     });
-
-    return () => {
-      peerInstance.current?.destroy();
-    };
-  }, [currentUser]);
+    return () => peerInstance.current?.destroy();
+  }, [currentUser?.id]);
 
   const setupConnection = (conn: any) => {
     conn.on('open', () => {
       activeConnections.current.set(conn.peer, conn);
       setPeers(prev => [...new Set([...prev, conn.peer])]);
-      
-      // If Host, wait for JOIN_REQUEST. If joining, send JOIN_REQUEST
-      if (!isRoomAdmin) {
-        sendSignalToPeer(conn, 'JOIN_REQUEST', { userId: currentUser?.id, name: currentUser?.name });
-      }
+      if (!isRoomAdmin) sendSignalToPeer(conn, 'JOIN_REQUEST', { userId: currentUser?.id, name: currentUser?.name });
     });
-
-    conn.on('data', (data: P2PSignal) => {
-      handleIncomingSignal(data, conn);
-    });
-
+    conn.on('data', (data: P2PSignal) => handleIncomingSignal(data, conn));
     conn.on('close', () => {
       activeConnections.current.delete(conn.peer);
       setPeers(prev => prev.filter(id => id !== conn.peer));
@@ -115,10 +99,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const handleIncomingSignal = (signal: P2PSignal, conn: any) => {
     switch (signal.type) {
       case 'JOIN_REQUEST':
-        if (isRoomAdmin) {
-           sendSignalToPeer(conn, 'JOIN_ACCEPTED', { room: currentRoom, history: messages });
-           setPeers(prev => [...new Set([...prev, conn.peer])]);
-        }
+        if (isRoomAdmin) sendSignalToPeer(conn, 'JOIN_ACCEPTED', { room: currentRoom, history: messages });
         break;
       case 'JOIN_ACCEPTED':
         if (isConnecting) {
@@ -132,12 +113,21 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         setMessages(prev => (prev.find(m => m.id === msg.id) ? prev : [...prev, msg]));
         if (isRoomAdmin) relaySignal(signal, conn.peer);
         break;
+      case 'MESSAGE_EDIT':
+        const { id, content } = signal.payload;
+        setMessages(prev => prev.map(m => m.id === id ? { ...m, content, isEdited: true } : m));
+        if (isRoomAdmin) relaySignal(signal, conn.peer);
+        break;
+      case 'MESSAGE_DELETE':
+        const { delId } = signal.payload;
+        setMessages(prev => prev.map(m => m.id === delId ? { ...m, content: 'This message was deleted', isDeleted: true } : m));
+        if (isRoomAdmin) relaySignal(signal, conn.peer);
+        break;
       case 'TYPING_INDICATOR':
         const { isTyping, userName } = signal.payload;
         setTypingUsers(prev => {
           const next = { ...prev };
-          if (isTyping) next[signal.senderId] = userName;
-          else delete next[signal.senderId];
+          if (isTyping) next[signal.senderId] = userName; else delete next[signal.senderId];
           return next;
         });
         if (isRoomAdmin) relaySignal(signal, conn.peer);
@@ -181,74 +171,48 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     localStorage.setItem('cheza_user', JSON.stringify(updatedUser));
   };
 
-  const setAppTheme = (t: ThemeType) => {
-    setTheme(t);
-    localStorage.setItem('cheza_theme', t);
-  };
+  const setAppTheme = (t: ThemeType) => { setTheme(t); localStorage.setItem('cheza_theme', t); };
+  const setChatBg = (url: string) => { setChatBgState(url); localStorage.setItem('cheza_chat_bg', url); };
 
   const createRoom = (type: RoomType) => {
     if (!currentUser) return;
     setIsConnecting(true);
-    const roomId = generateUUID().split('-')[0].toUpperCase();
-    
-    // In PeerJS, if we want to be reachable by an ID, we should have opened with that ID.
-    // However, our Peer ID is currentUser.id. We will allow joining via the Admin's Peer ID.
-    // For simplicity, we use the Admin's ID as the Room ID.
-    const newRoom: Room = {
-      id: currentUser.id, // The ID others use to join
-      name: type === RoomType.PRIVATE ? "Private Session" : "Group Space",
-      type,
-      createdBy: currentUser.id,
-      createdAt: Date.now(),
-      activeBots: [],
-      adminIds: [currentUser.id]
-    };
-    
-    // Slight artificial delay for UX/Loading animation
-    setTimeout(() => {
-      setCurrentRoom(newRoom);
-      setMessages([]);
-      setIsConnecting(false);
-    }, 1500);
+    const newRoom: Room = { id: currentUser.id, name: type === RoomType.PRIVATE ? "Private Session" : "Group Space", type, createdBy: currentUser.id, createdAt: Date.now(), activeBots: [], adminIds: [currentUser.id] };
+    setTimeout(() => { setCurrentRoom(newRoom); setMessages([]); setIsConnecting(false); }, 1000);
   };
 
   const joinRoom = (roomId: string) => {
     if (!currentUser || !peerInstance.current) return;
-    setIsConnecting(true);
-    setConnectionError(null);
-    
+    setIsConnecting(true); setConnectionError(null);
     const conn = peerInstance.current.connect(roomId);
     setupConnection(conn);
-
-    // If no response in 10s, timeout
-    setTimeout(() => {
-      if (isConnecting && !currentRoom) {
-        setIsConnecting(false);
-        setConnectionError("Room not found or host offline.");
-      }
-    }, 10000);
+    setTimeout(() => { if (isConnecting && !currentRoom) { setIsConnecting(false); setConnectionError("Host unavailable."); } }, 10000);
   };
 
   const leaveRoom = () => {
-    activeConnections.current.forEach(conn => conn.close());
-    activeConnections.current.clear();
-    setCurrentRoom(null);
-    setMessages([]);
-    setPeers([]);
-    setTypingUsers({});
-    setIsConnecting(false);
+    activeConnections.current.forEach(c => c.close()); activeConnections.current.clear();
+    setCurrentRoom(null); setMessages([]); setPeers([]); setTypingUsers({}); setIsConnecting(false);
   };
 
-  const sendMessage = (content: string, type: MessageType = MessageType.TEXT) => {
+  const sendMessage = (content: string, type: MessageType = MessageType.TEXT, replyTo?: string) => {
     if (!currentUser || !currentRoom) return;
-    const msg: Message = { id: generateUUID(), roomId: currentRoom.id, senderId: currentUser.id, senderName: currentUser.name, content, timestamp: Date.now(), type, status: MessageStatus.SENT, reactions: {} };
+    const msg: Message = { id: generateUUID(), roomId: currentRoom.id, senderId: currentUser.id, senderName: currentUser.name, content, timestamp: Date.now(), type, status: MessageStatus.SENT, reactions: {}, replyTo };
     setMessages(prev => [...prev, msg]);
     sendSignalToAll('CHAT_MESSAGE', msg);
+    // WhatsApp Forward Simulation
+    if (currentUser.whatsappBot?.enabled) {
+      console.log("Forwarding to WhatsApp:", currentUser.whatsappBot.webhookUrl, content);
+    }
   };
 
-  const sendTypingSignal = (isTyping: boolean) => {
-    if (!currentUser) return;
-    sendSignalToAll('TYPING_INDICATOR', { isTyping, userName: currentUser.name });
+  const editMessage = (id: string, content: string) => {
+    setMessages(prev => prev.map(m => m.id === id ? { ...m, content, isEdited: true } : m));
+    sendSignalToAll('MESSAGE_EDIT', { id, content });
+  };
+
+  const deleteMessage = (delId: string) => {
+    setMessages(prev => prev.map(m => m.id === delId ? { ...m, content: 'This message was deleted', isDeleted: true } : m));
+    sendSignalToAll('MESSAGE_DELETE', { delId });
   };
 
   const applyReactionLocal = (messageId: string, emoji: string, userId: string) => {
@@ -268,14 +232,13 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     sendSignalToAll('REACTION', { messageId, emoji });
   };
 
-  const addBotToRoom = (botType: BotType) => {
-    if (!currentRoom) return;
-    setCurrentRoom({ ...currentRoom, activeBots: [...currentRoom.activeBots, botType] });
-  };
+  const addBotToRoom = (botType: BotType) => { if (currentRoom) setCurrentRoom({ ...currentRoom, activeBots: [...currentRoom.activeBots, botType] }); };
+  const removeBotFromRoom = (botType: BotType) => { if (currentRoom) setCurrentRoom({ ...currentRoom, activeBots: currentRoom.activeBots.filter(b => b !== botType) }); };
 
-  const removeBotFromRoom = (botType: BotType) => {
-    if (!currentRoom) return;
-    setCurrentRoom({ ...currentRoom, activeBots: currentRoom.activeBots.filter(b => b !== botType) });
+  // Fix: Defined sendTypingSignal to resolve shorthand property error in context provider
+  const sendTypingSignal = (isTyping: boolean) => {
+    if (!currentUser) return;
+    sendSignalToAll('TYPING_INDICATOR', { isTyping, userName: currentUser.name });
   };
 
   const isRoomAdmin = !!(currentUser && currentRoom && currentRoom.adminIds.includes(currentUser.id));
@@ -283,10 +246,10 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   return (
     <AppContext.Provider value={{ 
       currentUser, currentRoom, messages, login, updateUser,
-      createRoom, joinRoom, leaveRoom, sendMessage,
-      addBotToRoom, removeBotFromRoom, addMessage: (m) => setMessages(prev => [...prev, m]), 
-      addReaction, isRoomAdmin, isOnline, peers, sendTypingSignal, typingUsers,
-      isConnecting, connectionError, theme, setAppTheme
+      createRoom, joinRoom, leaveRoom, sendMessage, editMessage, deleteMessage,
+      addBotToRoom, removeBotFromRoom, addReaction,
+      isRoomAdmin, isOnline, peers, sendTypingSignal, typingUsers,
+      isConnecting, connectionError, theme, setAppTheme, chatBg, setChatBg
     }}>
       {children}
     </AppContext.Provider>
@@ -295,6 +258,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
 export const useApp = () => {
   const context = useContext(AppContext);
-  if (!context) throw new Error("useApp must be used within AppProvider");
+  if (!context) throw new Error("useApp error");
   return context;
 };

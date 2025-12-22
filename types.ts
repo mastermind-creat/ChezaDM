@@ -4,6 +4,11 @@ export interface User {
   name: string;
   isAnonymous: boolean;
   avatarUrl?: string;
+  whatsappBot?: {
+    apiKey: string;
+    webhookUrl: string;
+    enabled: boolean;
+  };
 }
 
 export enum MessageType {
@@ -33,7 +38,10 @@ export interface Message {
   status?: MessageStatus;
   isBot?: boolean;
   botType?: BotType;
-  reactions?: Record<string, string[]>; 
+  reactions?: Record<string, string[]>;
+  replyTo?: string; // ID of the message being replied to
+  isEdited?: boolean;
+  isDeleted?: boolean;
 }
 
 export enum RoomType {
@@ -41,7 +49,7 @@ export enum RoomType {
   GROUP = 'GROUP',
 }
 
-export type ThemeType = 'light' | 'dark' | 'kenya' | 'midnight' | 'sunset';
+export type ThemeType = 'light' | 'dark' | 'kenya' | 'midnight' | 'sunset' | 'matrix';
 
 export interface Room {
   id: string;
@@ -72,8 +80,16 @@ export interface BotConfig {
   triggers?: string[];
 }
 
-// P2P Signaling Types
-export type SignalType = 'CHAT_MESSAGE' | 'TYPING_INDICATOR' | 'REACTION' | 'PEER_JOIN' | 'PEER_LEAVE' | 'JOIN_REQUEST' | 'JOIN_ACCEPTED';
+export type SignalType = 
+  | 'CHAT_MESSAGE' 
+  | 'TYPING_INDICATOR' 
+  | 'REACTION' 
+  | 'PEER_JOIN' 
+  | 'PEER_LEAVE' 
+  | 'JOIN_REQUEST' 
+  | 'JOIN_ACCEPTED'
+  | 'MESSAGE_EDIT'
+  | 'MESSAGE_DELETE';
 
 export interface P2PSignal {
   type: SignalType;

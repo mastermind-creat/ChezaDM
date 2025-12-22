@@ -1,5 +1,5 @@
 
-import React, { ReactNode } from 'react';
+import React, { Component, ReactNode } from 'react';
 import { Layout } from './components/Layout';
 import { Home } from './components/Home';
 import { ChatRoom } from './components/ChatRoom';
@@ -7,7 +7,7 @@ import { AppProvider, useApp } from './context/AppContext';
 
 // Define Props and State for ErrorBoundary to ensure TS correctly identifies them
 interface ErrorBoundaryProps {
-  children?: ReactNode;
+  children: ReactNode;
 }
 
 interface ErrorBoundaryState {
@@ -15,8 +15,8 @@ interface ErrorBoundaryState {
   error: Error | null;
 }
 
-// Use React.Component explicitly to ensure state and props properties are recognized by TypeScript
-class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+// Fix: Use React Component explicitly and ensure children are correctly typed to resolve property access errors
+class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   constructor(props: ErrorBoundaryProps) {
     super(props);
     // Initialize state properly within constructor
@@ -29,7 +29,7 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
   }
 
   render() {
-    // Correctly access this.state after extending React.Component
+    // Correctly access this.state after extending Component
     if (this.state.hasError) {
       return (
         <div className="flex flex-col items-center justify-center h-screen p-6 bg-red-50 text-red-900 text-center">
