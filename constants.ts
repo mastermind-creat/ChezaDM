@@ -59,7 +59,7 @@ export const THEMES: Record<ThemeType, ThemeConfig> = {
     accent: 'bg-[#007BFF]',
     card: 'bg-white',
     bubbleMe: 'bg-[#007BFF] text-white',
-    bubbleThem: 'bg-white text-gray-900',
+    bubbleThem: 'bg-white text-gray-900 border border-gray-100',
     input: 'bg-white',
     border: 'border-gray-200'
   },
@@ -107,18 +107,19 @@ export const THEMES: Record<ThemeType, ThemeConfig> = {
     bg: 'bg-black',
     text: 'text-green-500',
     accent: 'bg-green-600',
-    card: 'bg-zinc-900',
-    bubbleMe: 'bg-green-900/50 text-green-400 border border-green-500/30',
-    bubbleThem: 'bg-zinc-800 text-green-500 border border-green-500/10',
-    input: 'bg-zinc-950 text-green-500',
+    card: 'bg-[#0a0a0a]',
+    bubbleMe: 'bg-green-900/40 text-green-300 border border-green-500/50',
+    bubbleThem: 'bg-zinc-900/80 text-green-500 border border-green-500/20',
+    input: 'bg-black text-green-500 border-green-500/40',
     border: 'border-green-500/20'
   }
 };
 
 export const CHAT_BGS = [
   { id: 'none', url: '', label: 'Clean' },
-  { id: 'wa', url: 'https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png', label: 'Classic' },
-  { id: 'space', url: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3h2cnB2amZqOHZnb3p1ZzVndndzZzRyeGZ4eWZ4eWZ4eWZ4eWZ4ZSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/Lp9pyC5h0N984/giphy.gif', label: 'Deep Space' },
-  { id: 'abstract', url: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExenF2bnJ2amZqOHZnb3p1ZzVndndzZzRyeGZ4eWZ4eWZ4eWZ4eWZ4ZSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3o7TKMGpxSOfy/giphy.gif', label: 'Neon Abstract' },
-  { id: 'forest', url: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExN3J2bnJ2amZqOHZnb3p1ZzVndndzZzRyeGZ4eWZ4eWZ4eWZ4eWZ4ZSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/xT9IgzoXW4006j8Tja/giphy.gif', label: 'Rainy Forest' }
+  { id: 'matrix_flow', url: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExcms1Y2l4Mnp0emh5eHJtZzN6Z3R3Z3B6Z3R3Z3B6Z3R3Z3B6ZyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3o7TKSjP8rC3nC9cM8/giphy.gif', label: 'Matrix Code' },
+  { id: 'wa_classic', url: 'https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png', label: 'WhatsApp' },
+  { id: 'cyberpunk', url: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3h2cnB2amZqOHZnb3p1ZzVndndzZzRyeGZ4eWZ4eWZ4eWZ4eWZ4ZSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/Lp9pyC5h0N984/giphy.gif', label: 'Cyber City' },
+  { id: 'nebula', url: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExenF2bnJ2amZqOHZnb3p1ZzVndndzZzRyeGZ4eWZ4eWZ4eWZ4eWZ4ZSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3o7TKMGpxSOfy/giphy.gif', label: 'Nebula' },
+  { id: 'digital_rain', url: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExcm5vMzl5emh5eHJtZzN6Z3R3Z3B6Z3R3Z3B6Z3R3Z3B6ZyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/A06UFEx8jLU7m/giphy.gif', label: 'Rainy Day' }
 ];

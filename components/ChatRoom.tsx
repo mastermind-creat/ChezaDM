@@ -4,6 +4,7 @@ import { useApp } from '../context/AppContext';
 import { MessageType, Message } from '../types';
 import { editChatImage } from '../services/geminiService';
 import { THEMES } from '../constants';
+import { MatrixBackground } from './MatrixBackground';
 
 const fileToBase64 = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -35,13 +36,16 @@ export const ChatRoom: React.FC = () => {
   const typingTimeoutRef = useRef<any>(null);
   const t = THEMES[theme];
 
+  const isConnected = peers.length > 0;
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, typingUsers, replyTo]);
 
   const handleSend = (e?: React.FormEvent) => {
     e?.preventDefault();
-    if (!inputText.trim()) return;
+    if (!inputText.trim() || !isConnected) return;
+    
     if (editingId) {
       editMessage(editingId, inputText);
       setEditingId(null);
@@ -76,7 +80,7 @@ export const ChatRoom: React.FC = () => {
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>, type: MessageType) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file || !isConnected) return;
     setUploadProgress(10);
     try {
         const base64 = await fileToBase64(file);
@@ -109,28 +113,43 @@ export const ChatRoom: React.FC = () => {
 
   return (
     <div className={`flex flex-col h-full ${t.bg} transition-all duration-300 relative`}>
-      {/* Dynamic Background */}
-      {chatBg && <div className="absolute inset-0 opacity-20 pointer-events-none transition-opacity duration-700" style={{ backgroundImage: `url(${chatBg})`, backgroundSize: 'cover', backgroundPosition: 'center' }}></div>}
+      {/* Advanced Background Effects */}
+      {theme === 'matrix' && <MatrixBackground />}
+      {chatBg && (
+        <div 
+          className="absolute inset-0 opacity-15 pointer-events-none transition-opacity duration-1000 z-0" 
+          style={{ backgroundImage: `url(${chatBg})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
+        ></div>
+      )}
       
-      <header className={`${t.card} p-4 border-b ${t.border} flex items-center justify-between z-20 shadow-sm`}>
+      <header className={`${t.card} p-4 border-b ${t.border} flex items-center justify-between z-20 shadow-sm backdrop-blur-sm bg-opacity-90`}>
         <div className="flex items-center space-x-3">
-          <button onClick={leaveRoom} className={`p-2 ${t.text} rounded-full transition`}>
+          <button onClick={leaveRoom} className={`p-2 ${t.text} rounded-full transition hover:bg-black/5`}>
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" /></svg>
           </button>
-          <div>
-            <h1 className={`font-black text-lg ${t.text}`}>{currentRoom?.name}</h1>
-            <div className="flex items-center space-x-1">
-                <span className={`w-1.5 h-1.5 rounded-full ${peers.length > 0 ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}></span>
-                <span className={`text-[9px] font-black uppercase opacity-40 ${t.text}`}>{peers.length + 1} ONLINE</span>
+          <div className="flex flex-col">
+            <h1 className={`font-black text-lg ${t.text} leading-tight`}>{currentRoom?.name}</h1>
+            <div className="flex items-center space-x-1.5">
+                <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)] animate-pulse' : 'bg-red-400 animate-pulse'}`}></span>
+                <span className={`text-[10px] font-black uppercase tracking-wider opacity-60 ${t.text}`}>
+                  {isConnected ? `${peers.length + 1} ONLINE` : 'WAITING FOR PEER...'}
+                </span>
             </div>
           </div>
         </div>
         <div className="flex space-x-1">
-            <div className={`px-3 py-1 bg-black/5 rounded-full text-[10px] font-black ${t.text}`}>{currentRoom?.id}</div>
+            <div className={`px-3 py-1 bg-black/5 rounded-full text-[10px] font-black ${t.text} opacity-50 select-none`}>{currentRoom?.id}</div>
         </div>
       </header>
 
       <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4 z-10" onClick={() => { setContextMenu(null); setShowAttachMenu(false); }}>
+        {!isConnected && (
+          <div className="flex flex-col items-center justify-center h-full opacity-30 text-center animate-pulse">
+            <div className="text-4xl mb-4">📡</div>
+            <p className={`font-black uppercase tracking-[0.2em] text-xs ${t.text}`}>Waiting for connection...</p>
+            <p className={`text-[10px] mt-2 max-w-[150px] font-bold ${t.text}`}>Share your Session ID to start chatting</p>
+          </div>
+        )}
         {messages.map((msg) => {
           const isMe = msg.senderId === currentUser?.id;
           const repliedMsg = msg.replyTo ? messages.find(m => m.id === msg.replyTo) : null;
@@ -141,11 +160,11 @@ export const ChatRoom: React.FC = () => {
                 onContextMenu={(e) => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, msg }); }}
               >
                 {repliedMsg && (
-                    <div className={`mb-1 px-3 py-1.5 rounded-xl text-[10px] bg-black/5 border-l-4 border-cheza-blue opacity-70 max-w-full truncate ${t.text}`}>
+                    <div className={`mb-1 px-3 py-1.5 rounded-xl text-[10px] bg-black/5 border-l-4 border-cheza-blue opacity-70 max-w-full truncate ${t.text} backdrop-blur-sm`}>
                         <span className="font-black mr-1">{repliedMsg.senderName}:</span>{repliedMsg.content}
                     </div>
                 )}
-                <div className={`relative px-4 py-2.5 rounded-2xl shadow-sm ${isMe ? t.bubbleMe + ' rounded-br-none' : t.bubbleThem + ' rounded-bl-none'}`}>
+                <div className={`relative px-4 py-2.5 rounded-2xl shadow-sm transition-all duration-300 ${isMe ? t.bubbleMe + ' rounded-br-none' : t.bubbleThem + ' rounded-bl-none'} backdrop-blur-sm bg-opacity-95`}>
                   {!isMe && <p className={`text-[9px] font-black mb-1 uppercase ${theme === 'matrix' ? 'text-green-300' : 'text-cheza-blue'}`}>{msg.senderName}</p>}
                   {renderMessageContent(msg)}
                   <div className={`text-[8px] mt-1 flex justify-end opacity-40 font-black uppercase`}>
@@ -157,7 +176,7 @@ export const ChatRoom: React.FC = () => {
           );
         })}
         {Object.values(typingUsers).length > 0 && (
-            <div className={`text-[10px] font-black opacity-50 ${t.text} animate-pulse`}>
+            <div className={`text-[10px] font-black opacity-50 ${t.text} animate-pulse px-2`}>
                 {Object.values(typingUsers).join(', ')} typing...
             </div>
         )}
@@ -166,40 +185,45 @@ export const ChatRoom: React.FC = () => {
 
       {/* Context Menu */}
       {contextMenu && (
-          <div className={`fixed z-[100] ${t.card} shadow-2xl rounded-2xl p-1 border ${t.border}`} style={{ left: Math.min(contextMenu.x, window.innerWidth - 150), top: Math.min(contextMenu.y, window.innerHeight - 150) }}>
-              <button onClick={() => handleReply(contextMenu.msg)} className={`w-full text-left px-4 py-2 text-xs font-bold ${t.text} hover:bg-black/5 rounded-xl`}>Reply</button>
+          <div className={`fixed z-[100] ${t.card} shadow-2xl rounded-2xl p-1 border ${t.border} backdrop-blur-md bg-opacity-90`} style={{ left: Math.min(contextMenu.x, window.innerWidth - 150), top: Math.min(contextMenu.y, window.innerHeight - 150) }}>
+              <button onClick={() => handleReply(contextMenu.msg)} className={`w-full text-left px-4 py-2 text-xs font-bold ${t.text} hover:bg-black/5 rounded-xl transition`}>Reply</button>
               {contextMenu.msg.senderId === currentUser?.id && !contextMenu.msg.isDeleted && (
                   <>
-                      <button onClick={() => handleEdit(contextMenu.msg)} className={`w-full text-left px-4 py-2 text-xs font-bold ${t.text} hover:bg-black/5 rounded-xl`}>Edit</button>
-                      <button onClick={() => handleDelete(contextMenu.msg)} className="w-full text-left px-4 py-2 text-xs font-bold text-red-500 hover:bg-red-50 rounded-xl">Delete</button>
+                      <button onClick={() => handleEdit(contextMenu.msg)} className={`w-full text-left px-4 py-2 text-xs font-bold ${t.text} hover:bg-black/5 rounded-xl transition`}>Edit</button>
+                      <button onClick={() => handleDelete(contextMenu.msg)} className="w-full text-left px-4 py-2 text-xs font-bold text-red-500 hover:bg-red-50 rounded-xl transition">Delete</button>
                   </>
               )}
           </div>
       )}
 
       {/* Input Tray */}
-      <div className={`p-4 ${t.card} border-t ${t.border} z-20`}>
+      <div className={`p-4 ${t.card} border-t ${t.border} z-20 backdrop-blur-md bg-opacity-95`}>
         {replyTo && (
-            <div className="mb-2 p-2 bg-black/5 rounded-xl flex items-center justify-between border-l-4 border-cheza-blue">
+            <div className="mb-2 p-2 bg-black/5 rounded-xl flex items-center justify-between border-l-4 border-cheza-blue animate-slide-up">
                 <div className="truncate flex-1">
                     <p className="text-[10px] font-black text-cheza-blue uppercase">Replying to {replyTo.senderName}</p>
                     <p className={`text-xs truncate opacity-70 ${t.text}`}>{replyTo.content}</p>
                 </div>
-                <button onClick={() => setReplyTo(null)} className="p-1 opacity-50">✕</button>
+                <button onClick={() => setReplyTo(null)} className="p-1 opacity-50 hover:opacity-100">✕</button>
             </div>
         )}
         {editingId && (
-            <div className="mb-2 p-2 bg-black/5 rounded-xl flex items-center justify-between border-l-4 border-yellow-500">
+            <div className="mb-2 p-2 bg-black/5 rounded-xl flex items-center justify-between border-l-4 border-yellow-500 animate-slide-up">
                 <div className="truncate flex-1">
                     <p className="text-[10px] font-black text-yellow-500 uppercase">Editing Message</p>
                 </div>
-                <button onClick={() => { setEditingId(null); setInputText(''); }} className="p-1 opacity-50">✕</button>
+                <button onClick={() => { setEditingId(null); setInputText(''); }} className="p-1 opacity-50 hover:opacity-100">✕</button>
             </div>
         )}
         
-        <div className="flex items-end space-x-3">
+        <div className={`flex items-end space-x-3 transition-opacity ${isConnected ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
           <div className="relative">
-            <button onClick={() => setShowAttachMenu(!showAttachMenu)} className={`p-3 opacity-40 hover:opacity-100 transition ${t.text}`}>📎</button>
+            <button 
+              onClick={() => isConnected && setShowAttachMenu(!showAttachMenu)} 
+              className={`p-3 opacity-40 hover:opacity-100 transition ${t.text} text-xl`}
+            >
+              📎
+            </button>
             {showAttachMenu && (
                 <div className={`absolute bottom-16 left-0 ${t.card} shadow-2xl rounded-2xl p-2 w-48 border ${t.border} animate-slide-up flex flex-col z-50`}>
                     {[
@@ -208,21 +232,31 @@ export const ChatRoom: React.FC = () => {
                       { icon: '📄', label: 'File', id: 'f-doc', accept: '*', type: MessageType.FILE }
                     ].map(btn => (
                       <button key={btn.id} onClick={() => document.getElementById(btn.id)?.click()} className={`flex items-center p-3 space-x-3 hover:bg-black/5 rounded-xl transition`}>
-                          <span>{btn.icon}</span> <span className={`text-xs font-black uppercase ${t.text}`}>{btn.label}</span>
+                          <span className="text-xl">{btn.icon}</span> <span className={`text-xs font-black uppercase tracking-tight ${t.text}`}>{btn.label}</span>
                           <input id={btn.id} type="file" accept={btn.accept} className="hidden" onChange={(e) => handleFileSelect(e, btn.type)} />
                       </button>
                     ))}
                 </div>
             )}
           </div>
-          <div className={`${t.input} rounded-2xl flex-1 flex items-center px-4 py-1.5 border ${t.border} shadow-inner`}>
+          <div className={`${t.input} rounded-2xl flex-1 flex items-center px-4 py-1.5 border ${t.border} shadow-inner transition-all focus-within:ring-2 focus-within:ring-cheza-blue focus-within:ring-opacity-20`}>
             <input 
-              type="text" value={inputText} onChange={(e) => { setInputText(e.target.value); sendTypingSignal(true); }}
-              onKeyDown={(e) => e.key === 'Enter' && handleSend()} placeholder="Type message..." 
+              type="text" value={inputText} 
+              onChange={(e) => { 
+                setInputText(e.target.value); 
+                if (isConnected) sendTypingSignal(true); 
+              }}
+              onKeyDown={(e) => e.key === 'Enter' && handleSend()} 
+              placeholder={isConnected ? "Type message..." : "Waiting for connection..."} 
               className={`flex-1 bg-transparent py-2.5 outline-none text-sm font-bold placeholder:opacity-30 ${t.text}`}
+              disabled={!isConnected}
             />
           </div>
-          <button onClick={handleSend} disabled={!inputText.trim()} className={`p-4 rounded-2xl shadow-xl transition transform active:scale-95 ${inputText.trim() ? t.accent + ' text-white' : 'bg-gray-200 text-gray-400'}`}>
+          <button 
+            onClick={handleSend} 
+            disabled={!inputText.trim() || !isConnected} 
+            className={`p-4 rounded-2xl shadow-xl transition transform active:scale-95 ${inputText.trim() && isConnected ? t.accent + ' text-white' : 'bg-gray-200 text-gray-400'}`}
+          >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" /></svg>
           </button>
         </div>
@@ -240,7 +274,7 @@ export const ChatRoom: React.FC = () => {
                         const res = await editChatImage(imageToEdit.content, editPrompt);
                         if (res) sendMessage(res, MessageType.IMAGE);
                         setIsEditingImage(false); setImageToEdit(null);
-                    }} className={`flex-1 py-4 bg-cheza-blue text-white rounded-2xl font-black text-xs uppercase`}>{isEditingImage ? 'Thinking...' : 'Apply'}</button>
+                    }} className={`flex-1 py-4 bg-cheza-blue text-white rounded-2xl font-black text-xs uppercase shadow-lg`}>{isEditingImage ? 'Thinking...' : 'Apply'}</button>
                 </div>
             </div>
          </div>
