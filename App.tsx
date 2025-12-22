@@ -1,5 +1,5 @@
 
-import React, { ReactNode } from 'react';
+import React, { ReactNode, Component } from 'react';
 import { Layout } from './components/Layout';
 import { Home } from './components/Home';
 import { ChatRoom } from './components/ChatRoom';
@@ -7,6 +7,7 @@ import { AppProvider, useApp } from './context/AppContext';
 
 // Define Props and State for ErrorBoundary to ensure TS correctly identifies them
 interface ErrorBoundaryProps {
+  // Explicitly defining children as required to satisfy React component type expectations in JSX
   children: ReactNode;
 }
 
@@ -15,22 +16,22 @@ interface ErrorBoundaryState {
   error: Error | null;
 }
 
-// Fix: Use React.Component explicitly and ensure children are correctly typed to resolve property access errors
-// This ensures TypeScript correctly identifies 'state' and 'props' properties from the React base class.
+// Fixed ErrorBoundary: Use React.Component to ensure props and state properties are correctly inherited
 class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  constructor(props: ErrorBoundaryProps) {
-    super(props);
-    // Initialize state properly within constructor
-    this.state = { hasError: false, error: null };
-  }
+  // Initialize state directly as a class property
+  state: ErrorBoundaryState = { 
+    hasError: false, 
+    error: null 
+  };
 
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {
     // Update state so the next render will show the fallback UI
     return { hasError: true, error };
   }
 
+  // Removed 'override' keyword as inheritance detection was failing in the current environment
   render() {
-    // Correctly access this.state after extending React.Component
+    // Correctly access state from the base React.Component class
     if (this.state.hasError) {
       return (
         <div className="flex flex-col items-center justify-center h-screen p-6 bg-red-50 text-red-900 text-center">
@@ -51,7 +52,7 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
         </div>
       );
     }
-    // Correctly access this.props to return children
+    // Correctly access props to return children, resolving the 'props' property error
     return this.props.children;
   }
 }

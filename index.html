@@ -3,14 +3,18 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>ChezaDM</title>
     <meta name="description" content="Secure, fast, Kenyan-style messaging." />
     
     <!-- PWA Meta Tags -->
     <meta name="theme-color" content="#007BFF" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="ChezaDM" />
+    
+    <link rel="apple-touch-icon" href="https://picsum.photos/id/1/180/180" />
     <link rel="manifest" href="/manifest.json" />
 
     <!-- PeerJS for P2P -->
@@ -25,10 +29,10 @@
           extend: {
             colors: {
               cheza: {
-                blue: '#007BFF', // Electric Blue
-                green: '#00E676', // Mint Green
-                yellow: '#FFC107', // Warm Yellow
-                black: '#121212', // Kenyan Black (Dark Charcoal)
+                blue: '#007BFF',
+                green: '#00E676',
+                yellow: '#FFC107',
+                black: '#121212',
                 light: '#F8F9FA',
               }
             },
@@ -64,6 +68,10 @@
       .h-safe-top { height: env(safe-area-inset-top); }
       .h-safe-bottom { height: env(safe-area-inset-bottom); }
       
+      body {
+        overscroll-behavior-y: none;
+      }
+
       /* Smooth message transitions */
       .message-enter { animation: popIn 0.3s ease-out forwards; }
     </style>

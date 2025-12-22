@@ -1,20 +1,48 @@
+
 {
   "short_name": "ChezaDM",
   "name": "ChezaDM Messenger",
+  "description": "Secure, fast, decentralized P2P Kenyan messaging.",
   "icons": [
     {
-      "src": "https://picsum.photos/192/192",
-      "type": "image/png",
-      "sizes": "192x192"
+      "src": "https://api.dicebear.com/9.x/shapes/svg?seed=ChezaDM&backgroundColor=007bff",
+      "type": "image/svg+xml",
+      "sizes": "any"
     },
     {
-      "src": "https://picsum.photos/512/512",
+      "src": "https://picsum.photos/id/1/192/192",
       "type": "image/png",
-      "sizes": "512x512"
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://picsum.photos/id/1/512/512",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
     }
   ],
-  "start_url": ".",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
-  "theme_color": "#E1302A",
-  "background_color": "#ffffff"
+  "orientation": "portrait",
+  "theme_color": "#007BFF",
+  "background_color": "#121212",
+  "categories": ["social", "communication"],
+  "screenshots": [
+    {
+      "src": "https://picsum.photos/800/600?random=1",
+      "sizes": "800x600",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Chat Interface"
+    },
+    {
+      "src": "https://picsum.photos/600/800?random=2",
+      "sizes": "600x800",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Mobile Experience"
+    }
+  ]
 }
