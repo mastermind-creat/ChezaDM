@@ -18,7 +18,7 @@ export enum MessageType {
 
 export enum MessageStatus {
   SENT = 'SENT',
-  PENDING = 'PENDING', // For offline queuing
+  PENDING = 'PENDING',
   ERROR = 'ERROR'
 }
 
@@ -30,10 +30,9 @@ export interface Message {
   content: string;
   timestamp: number;
   type: MessageType;
-  status?: MessageStatus; // Track delivery status
+  status?: MessageStatus;
   isBot?: boolean;
   botType?: BotType;
-  // Map of emoji char to array of userIds who reacted
   reactions?: Record<string, string[]>; 
 }
 
@@ -41,6 +40,8 @@ export enum RoomType {
   PRIVATE = 'PRIVATE',
   GROUP = 'GROUP',
 }
+
+export type ThemeType = 'light' | 'dark' | 'kenya' | 'midnight' | 'sunset';
 
 export interface Room {
   id: string;
@@ -51,13 +52,13 @@ export interface Room {
   expiresAt?: number;
   activeBots: BotType[];
   adminIds: string[];
-  theme?: 'light' | 'dark' | 'kenya';
+  theme?: ThemeType;
 }
 
 export enum BotType {
   MODERATOR = 'MODERATOR',
   MEME = 'MEME',
-  TRANSLATOR = 'TRANSLATOR', // Sheng <-> English
+  TRANSLATOR = 'TRANSLATOR',
   SUMMARY = 'SUMMARY',
   HELPER = 'HELPER'
 }
@@ -68,5 +69,15 @@ export interface BotConfig {
   description: string;
   icon: string;
   systemInstruction: string;
-  triggers?: string[]; // Commands that trigger the bot explicitly
+  triggers?: string[];
+}
+
+// P2P Signaling Types
+export type SignalType = 'CHAT_MESSAGE' | 'TYPING_INDICATOR' | 'REACTION' | 'PEER_JOIN' | 'PEER_LEAVE' | 'JOIN_REQUEST' | 'JOIN_ACCEPTED';
+
+export interface P2PSignal {
+  type: SignalType;
+  payload: any;
+  senderId: string;
+  senderName: string;
 }

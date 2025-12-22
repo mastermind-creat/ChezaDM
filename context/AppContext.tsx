@@ -1,7 +1,9 @@
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User, Room, Message, MessageType, RoomType, BotType, MessageStatus } from '../types';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
+import { User, Room, Message, MessageType, RoomType, BotType, MessageStatus, P2PSignal, SignalType, ThemeType } from '../types';
 import { generateUUID } from '../utils';
+
+declare var Peer: any;
 
 interface AppContextType {
   currentUser: User | null;
@@ -19,6 +21,13 @@ interface AppContextType {
   addReaction: (messageId: string, emoji: string) => void;
   isRoomAdmin: boolean;
   isOnline: boolean;
+  peers: string[];
+  sendTypingSignal: (isTyping: boolean) => void;
+  typingUsers: Record<string, string>;
+  isConnecting: boolean;
+  connectionError: string | null;
+  theme: ThemeType;
+  setAppTheme: (t: ThemeType) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -27,99 +36,141 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [currentRoom, setCurrentRoom] = useState<Room | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  
-  // Offline Capabilities
   const [isOnline, setIsOnline] = useState(navigator.onLine);
-  const [pendingQueue, setPendingQueue] = useState<Message[]>([]);
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [theme, setTheme] = useState<ThemeType>('light');
+  
+  const [peers, setPeers] = useState<string[]>([]);
+  const [typingUsers, setTypingUsers] = useState<Record<string, string>>({});
+  const peerInstance = useRef<any>(null);
+  const activeConnections = useRef<Map<string, any>>(new Map());
 
-  // 1. Load User & Cached Data on Mount
   useEffect(() => {
     try {
-        const savedUser = localStorage.getItem('cheza_user');
-        if (savedUser) setCurrentUser(JSON.parse(savedUser));
+      const savedUser = localStorage.getItem('cheza_user');
+      if (savedUser) setCurrentUser(JSON.parse(savedUser));
+      const savedTheme = localStorage.getItem('cheza_theme') as ThemeType;
+      if (savedTheme) setTheme(savedTheme);
+    } catch (e) {}
 
-        // Cache recovery
-        const savedRoom = localStorage.getItem('cheza_active_room');
-        const savedMessages = localStorage.getItem('cheza_active_messages');
-        const savedQueue = localStorage.getItem('cheza_offline_queue');
-
-        if (savedRoom) setCurrentRoom(JSON.parse(savedRoom));
-        if (savedMessages) setMessages(JSON.parse(savedMessages));
-        if (savedQueue) setPendingQueue(JSON.parse(savedQueue));
-    } catch (e) {
-        console.error("Failed to load cached data", e);
-    }
-
-    // Network Listeners
-    const handleOnline = () => {
-      setIsOnline(true);
-      flushOfflineQueue();
-    };
+    const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
-
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
-
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
   }, []);
 
-  // 2. Persistence Effects
   useEffect(() => {
-    try {
-        if (currentRoom) {
-          localStorage.setItem('cheza_active_room', JSON.stringify(currentRoom));
-          localStorage.setItem('cheza_active_messages', JSON.stringify(messages));
-        } else {
-          localStorage.removeItem('cheza_active_room');
-          localStorage.removeItem('cheza_active_messages');
-        }
-    } catch (e) {
-        console.error("Failed to save chat state (Quota Exceeded?)", e);
-    }
-  }, [currentRoom, messages]);
+    if (!currentUser) return;
+    const peerId = currentUser.id;
+    peerInstance.current = new Peer(peerId, {
+      debug: 1,
+      config: {
+        'iceServers': [{ 'urls': 'stun:stun.l.google.com:19302' }, { 'urls': 'stun:stun1.l.google.com:19302' }]
+      }
+    });
 
-  // 3. Flush Queue logic
-  const flushOfflineQueue = () => {
-    setPendingQueue(prevQueue => {
-      if (prevQueue.length === 0) return [];
+    peerInstance.current.on('connection', (conn: any) => {
+      setupConnection(conn);
+    });
+
+    peerInstance.current.on('error', (err: any) => {
+      console.error('Peer error:', err);
+      if (isConnecting) {
+        setConnectionError("Failed to connect. Check ID.");
+        setIsConnecting(false);
+      }
+    });
+
+    return () => {
+      peerInstance.current?.destroy();
+    };
+  }, [currentUser]);
+
+  const setupConnection = (conn: any) => {
+    conn.on('open', () => {
+      activeConnections.current.set(conn.peer, conn);
+      setPeers(prev => [...new Set([...prev, conn.peer])]);
       
-      // In a real app, send to backend here. 
-      // Here we just mark them as sent in the UI.
-      setMessages(currentMsgs => currentMsgs.map(msg => {
-        const wasPending = prevQueue.find(p => p.id === msg.id);
-        if (wasPending) {
-          return { ...msg, status: MessageStatus.SENT };
-        }
-        return msg;
-      }));
+      // If Host, wait for JOIN_REQUEST. If joining, send JOIN_REQUEST
+      if (!isRoomAdmin) {
+        sendSignalToPeer(conn, 'JOIN_REQUEST', { userId: currentUser?.id, name: currentUser?.name });
+      }
+    });
 
-      localStorage.removeItem('cheza_offline_queue');
-      return [];
+    conn.on('data', (data: P2PSignal) => {
+      handleIncomingSignal(data, conn);
+    });
+
+    conn.on('close', () => {
+      activeConnections.current.delete(conn.peer);
+      setPeers(prev => prev.filter(id => id !== conn.peer));
     });
   };
 
-  const login = (name: string, avatarUrl?: string) => {
-    const safeName = name || `Guest-${Math.floor(Math.random() * 10000)}`;
-    
-    // Use provided avatar, or generate one using DiceBear v9
-    const finalAvatar = avatarUrl || `https://api.dicebear.com/9.x/avataaars/svg?seed=${encodeURIComponent(safeName)}`;
-
-    const user: User = {
-      id: generateUUID(),
-      name: safeName,
-      isAnonymous: !name,
-      avatarUrl: finalAvatar
-    };
-    
-    try {
-      localStorage.setItem('cheza_user', JSON.stringify(user));
-    } catch (e) {
-      console.error("Storage Error (likely image too big)", e);
-      alert("Note: Profile image too large to save offline, but you can chat normally.");
+  const handleIncomingSignal = (signal: P2PSignal, conn: any) => {
+    switch (signal.type) {
+      case 'JOIN_REQUEST':
+        if (isRoomAdmin) {
+           sendSignalToPeer(conn, 'JOIN_ACCEPTED', { room: currentRoom, history: messages });
+           setPeers(prev => [...new Set([...prev, conn.peer])]);
+        }
+        break;
+      case 'JOIN_ACCEPTED':
+        if (isConnecting) {
+          setCurrentRoom(signal.payload.room);
+          setMessages(signal.payload.history || []);
+          setIsConnecting(false);
+        }
+        break;
+      case 'CHAT_MESSAGE':
+        const msg = signal.payload as Message;
+        setMessages(prev => (prev.find(m => m.id === msg.id) ? prev : [...prev, msg]));
+        if (isRoomAdmin) relaySignal(signal, conn.peer);
+        break;
+      case 'TYPING_INDICATOR':
+        const { isTyping, userName } = signal.payload;
+        setTypingUsers(prev => {
+          const next = { ...prev };
+          if (isTyping) next[signal.senderId] = userName;
+          else delete next[signal.senderId];
+          return next;
+        });
+        if (isRoomAdmin) relaySignal(signal, conn.peer);
+        break;
+      case 'REACTION':
+        const { messageId, emoji } = signal.payload;
+        applyReactionLocal(messageId, emoji, signal.senderId);
+        if (isRoomAdmin) relaySignal(signal, conn.peer);
+        break;
     }
+  };
+
+  const relaySignal = (signal: P2PSignal, excludePeerId: string) => {
+    activeConnections.current.forEach((conn, peerId) => {
+      if (peerId !== excludePeerId && conn.open) conn.send(signal);
+    });
+  };
+
+  const sendSignalToAll = (type: SignalType, payload: any) => {
+    if (!currentUser) return;
+    const signal: P2PSignal = { type, payload, senderId: currentUser.id, senderName: currentUser.name };
+    activeConnections.current.forEach(conn => { if (conn.open) conn.send(signal); });
+  };
+
+  const sendSignalToPeer = (conn: any, type: SignalType, payload: any) => {
+    if (!currentUser) return;
+    const signal: P2PSignal = { type, payload, senderId: currentUser.id, senderName: currentUser.name };
+    if (conn.open) conn.send(signal);
+  };
+
+  const login = (name: string, avatarUrl?: string) => {
+    const user: User = { id: generateUUID(), name: name || 'Guest', isAnonymous: !name, avatarUrl: avatarUrl || `https://api.dicebear.com/9.x/avataaars/svg?seed=${name}` };
+    localStorage.setItem('cheza_user', JSON.stringify(user));
     setCurrentUser(user);
   };
 
@@ -127,25 +178,24 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     if (!currentUser) return;
     const updatedUser = { ...currentUser, ...updates };
     setCurrentUser(updatedUser);
-    try {
-        localStorage.setItem('cheza_user', JSON.stringify(updatedUser));
-    } catch (e) {
-        console.error("Failed to update user profile storage", e);
-        alert("Could not save profile changes to storage. (Image too large?)");
-    }
+    localStorage.setItem('cheza_user', JSON.stringify(updatedUser));
+  };
+
+  const setAppTheme = (t: ThemeType) => {
+    setTheme(t);
+    localStorage.setItem('cheza_theme', t);
   };
 
   const createRoom = (type: RoomType) => {
     if (!currentUser) return;
-
-    // Generate Time-Encoded ID for Expiration Logic
-    // Format: [Base36Timestamp]-[RandomPart]
-    const timestampCode = Date.now().toString(36);
-    const randomPart = Math.random().toString(36).substring(2, 6);
-    const roomId = `${timestampCode}-${randomPart}`;
-
+    setIsConnecting(true);
+    const roomId = generateUUID().split('-')[0].toUpperCase();
+    
+    // In PeerJS, if we want to be reachable by an ID, we should have opened with that ID.
+    // However, our Peer ID is currentUser.id. We will allow joining via the Admin's Peer ID.
+    // For simplicity, we use the Admin's ID as the Room ID.
     const newRoom: Room = {
-      id: roomId,
+      id: currentUser.id, // The ID others use to join
       name: type === RoomType.PRIVATE ? "Private Session" : "Group Space",
       type,
       createdBy: currentUser.id,
@@ -154,185 +204,89 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       adminIds: [currentUser.id]
     };
     
-    initializeRoom(newRoom, "You created this secure session. Share the link to invite others.");
+    // Slight artificial delay for UX/Loading animation
+    setTimeout(() => {
+      setCurrentRoom(newRoom);
+      setMessages([]);
+      setIsConnecting(false);
+    }, 1500);
   };
 
   const joinRoom = (roomId: string) => {
-    // 1. ID Expiration Check (20 Minutes)
-    try {
-      const parts = roomId.split('-');
-      if (parts.length >= 2) {
-        const timePart = parts[0];
-        const createdAt = parseInt(timePart, 36);
-        
-        // Check if valid number
-        if (!isNaN(createdAt)) {
-           const twentyMinutes = 20 * 60 * 1000;
-           const now = Date.now();
-           
-           if (now - createdAt > twentyMinutes) {
-             alert("⚠️ This Join ID has expired (valid for 20 mins). Please ask for a new one.");
-             return;
-           }
-        }
+    if (!currentUser || !peerInstance.current) return;
+    setIsConnecting(true);
+    setConnectionError(null);
+    
+    const conn = peerInstance.current.connect(roomId);
+    setupConnection(conn);
+
+    // If no response in 10s, timeout
+    setTimeout(() => {
+      if (isConnecting && !currentRoom) {
+        setIsConnecting(false);
+        setConnectionError("Room not found or host offline.");
       }
-    } catch (e) {
-      console.error("ID Parse Error", e);
-      // Continue if parse fails (fallback for older IDs or manual entry errors)
-    }
-
-    // 2. Mock Join
-    const newRoom: Room = {
-      id: roomId,
-      name: "Joined Session",
-      type: RoomType.GROUP,
-      createdBy: 'unknown',
-      createdAt: Date.now(),
-      activeBots: [],
-      adminIds: []
-    };
-    
-    initializeRoom(newRoom, "You joined the session.");
-  };
-
-  const initializeRoom = (room: Room, welcomeText: string) => {
-    setCurrentRoom(room);
-    setMessages([]); 
-    
-    const sysMsg: Message = {
-      id: generateUUID(),
-      roomId: room.id,
-      senderId: 'system',
-      senderName: 'System',
-      content: welcomeText,
-      timestamp: Date.now(),
-      type: MessageType.SYSTEM,
-      status: MessageStatus.SENT
-    };
-    setMessages([sysMsg]);
+    }, 10000);
   };
 
   const leaveRoom = () => {
+    activeConnections.current.forEach(conn => conn.close());
+    activeConnections.current.clear();
     setCurrentRoom(null);
     setMessages([]);
-    setPendingQueue([]);
-    localStorage.removeItem('cheza_active_room');
-    localStorage.removeItem('cheza_active_messages');
-    localStorage.removeItem('cheza_offline_queue');
-  };
-
-  const addMessage = (msg: Message) => {
-    setMessages(prev => [...prev, msg]);
+    setPeers([]);
+    setTypingUsers({});
+    setIsConnecting(false);
   };
 
   const sendMessage = (content: string, type: MessageType = MessageType.TEXT) => {
     if (!currentUser || !currentRoom) return;
+    const msg: Message = { id: generateUUID(), roomId: currentRoom.id, senderId: currentUser.id, senderName: currentUser.name, content, timestamp: Date.now(), type, status: MessageStatus.SENT, reactions: {} };
+    setMessages(prev => [...prev, msg]);
+    sendSignalToAll('CHAT_MESSAGE', msg);
+  };
 
-    // Determine Status based on Connectivity
-    const status = isOnline ? MessageStatus.SENT : MessageStatus.PENDING;
+  const sendTypingSignal = (isTyping: boolean) => {
+    if (!currentUser) return;
+    sendSignalToAll('TYPING_INDICATOR', { isTyping, userName: currentUser.name });
+  };
 
-    const msg: Message = {
-      id: generateUUID(),
-      roomId: currentRoom.id,
-      senderId: currentUser.id,
-      senderName: currentUser.name,
-      content,
-      timestamp: Date.now(),
-      type,
-      status,
-      reactions: {}
-    };
-    
-    addMessage(msg);
-
-    // Queue if offline
-    if (!isOnline) {
-      const newQueue = [...pendingQueue, msg];
-      setPendingQueue(newQueue);
-      try {
-        localStorage.setItem('cheza_offline_queue', JSON.stringify(newQueue));
-      } catch (e) {
-        console.error("Queue storage full", e);
-      }
-    }
+  const applyReactionLocal = (messageId: string, emoji: string, userId: string) => {
+    setMessages(prev => prev.map(msg => {
+      if (msg.id !== messageId) return msg;
+      const reactions = { ...(msg.reactions || {}) };
+      const currentUsers = reactions[emoji] || [];
+      reactions[emoji] = currentUsers.includes(userId) ? currentUsers.filter(id => id !== userId) : [...currentUsers, userId];
+      if (reactions[emoji].length === 0) delete reactions[emoji];
+      return { ...msg, reactions };
+    }));
   };
 
   const addReaction = (messageId: string, emoji: string) => {
     if (!currentUser) return;
-
-    setMessages(prev => prev.map(msg => {
-      if (msg.id !== messageId) return msg;
-
-      const reactions = msg.reactions || {};
-      const currentUsers = reactions[emoji] || [];
-      
-      let newUsers;
-      if (currentUsers.includes(currentUser.id)) {
-        newUsers = currentUsers.filter(id => id !== currentUser.id);
-      } else {
-        newUsers = [...currentUsers, currentUser.id];
-      }
-
-      const newReactions = { ...reactions };
-      if (newUsers.length > 0) {
-        newReactions[emoji] = newUsers;
-      } else {
-        delete newReactions[emoji];
-      }
-
-      return { ...msg, reactions: newReactions };
-    }));
+    applyReactionLocal(messageId, emoji, currentUser.id);
+    sendSignalToAll('REACTION', { messageId, emoji });
   };
 
   const addBotToRoom = (botType: BotType) => {
     if (!currentRoom) return;
-    if (currentRoom.activeBots.includes(botType)) return;
-    
-    setCurrentRoom({
-        ...currentRoom,
-        activeBots: [...currentRoom.activeBots, botType]
-    });
-
-    const sysMsg: Message = {
-        id: generateUUID(),
-        roomId: currentRoom.id,
-        senderId: 'system',
-        senderName: 'System',
-        content: `${botType} Bot has been added to the chat.`,
-        timestamp: Date.now(),
-        type: MessageType.SYSTEM,
-        status: MessageStatus.SENT
-    };
-    addMessage(sysMsg);
+    setCurrentRoom({ ...currentRoom, activeBots: [...currentRoom.activeBots, botType] });
   };
 
   const removeBotFromRoom = (botType: BotType) => {
     if (!currentRoom) return;
-    setCurrentRoom({
-        ...currentRoom,
-        activeBots: currentRoom.activeBots.filter(b => b !== botType)
-    });
+    setCurrentRoom({ ...currentRoom, activeBots: currentRoom.activeBots.filter(b => b !== botType) });
   };
 
   const isRoomAdmin = !!(currentUser && currentRoom && currentRoom.adminIds.includes(currentUser.id));
 
   return (
     <AppContext.Provider value={{ 
-      currentUser, 
-      currentRoom, 
-      messages, 
-      login, 
-      updateUser,
-      createRoom,
-      joinRoom, 
-      leaveRoom, 
-      sendMessage,
-      addBotToRoom,
-      removeBotFromRoom,
-      addMessage,
-      addReaction,
-      isRoomAdmin,
-      isOnline
+      currentUser, currentRoom, messages, login, updateUser,
+      createRoom, joinRoom, leaveRoom, sendMessage,
+      addBotToRoom, removeBotFromRoom, addMessage: (m) => setMessages(prev => [...prev, m]), 
+      addReaction, isRoomAdmin, isOnline, peers, sendTypingSignal, typingUsers,
+      isConnecting, connectionError, theme, setAppTheme
     }}>
       {children}
     </AppContext.Provider>

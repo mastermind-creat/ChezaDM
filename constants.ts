@@ -1,4 +1,5 @@
-import { BotConfig, BotType } from './types';
+
+import { BotConfig, BotType, ThemeType } from './types';
 
 export const APP_NAME = "ChezaDM";
 
@@ -40,8 +41,35 @@ export const BOTS: Record<BotType, BotConfig> = {
   }
 };
 
-export const THEMES = {
-  light: 'bg-white text-gray-900',
-  dark: 'bg-gray-900 text-white',
-  kenya: 'bg-stone-100 text-gray-900', // Custom pattern implemented in CSS usually
+export const THEMES: Record<ThemeType, { bg: string, text: string, accent: string, card: string }> = {
+  light: {
+    bg: 'bg-[#F8F9FA]',
+    text: 'text-gray-900',
+    accent: 'bg-cheza-blue',
+    card: 'bg-white'
+  },
+  dark: {
+    bg: 'bg-[#121212]',
+    text: 'text-gray-100',
+    accent: 'bg-cheza-blue',
+    card: 'bg-gray-800'
+  },
+  kenya: {
+    bg: 'bg-[#FAF3E0]',
+    text: 'text-stone-900',
+    accent: 'bg-[#E1302A]',
+    card: 'bg-white'
+  },
+  midnight: {
+    bg: 'bg-[#0F172A]',
+    text: 'text-slate-100',
+    accent: 'bg-indigo-500',
+    card: 'bg-slate-800'
+  },
+  sunset: {
+    bg: 'bg-[#FEF2F2]',
+    text: 'text-orange-950',
+    accent: 'bg-orange-500',
+    card: 'bg-white'
+  }
 };

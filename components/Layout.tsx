@@ -1,21 +1,26 @@
+
 import React from 'react';
+import { useApp } from '../context/AppContext';
+import { THEMES } from '../constants';
 
 interface LayoutProps {
   children: React.ReactNode;
 }
 
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
+  const { theme } = useApp();
+  const t = THEMES[theme];
+
   return (
-    <div className="flex flex-col h-full w-full max-w-md mx-auto bg-white dark:bg-gray-900 shadow-2xl relative overflow-hidden">
-      {/* Status Bar Area filler for mobile standalone */}
-      <div className="h-safe-top w-full bg-kenya-red"></div>
+    <div className={`flex flex-col h-full w-full max-w-md mx-auto shadow-2xl relative overflow-hidden transition-colors duration-500 ${t.bg}`}>
+      {/* Dynamic Status Bar Color */}
+      <div className={`h-safe-top w-full ${theme === 'kenya' ? 'bg-[#E1302A]' : theme === 'midnight' ? 'bg-[#0F172A]' : 'bg-transparent'}`}></div>
       
       <main className="flex-1 overflow-hidden flex flex-col relative">
         {children}
       </main>
       
-      {/* Bottom Safe Area filler */}
-      <div className="h-safe-bottom w-full bg-white dark:bg-gray-900"></div>
+      <div className="h-safe-bottom w-full"></div>
     </div>
   );
 };

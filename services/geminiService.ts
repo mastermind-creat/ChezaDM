@@ -3,33 +3,19 @@ import { GoogleGenAI } from "@google/genai";
 import { BotType, Message } from "../types";
 import { BOTS } from "../constants";
 
-// Initialize Gemini API with browser safety check and default to empty string if missing
-const getApiKey = () => {
-  if (typeof process !== 'undefined' && process.env && process.env.API_KEY) {
-    return process.env.API_KEY;
-  }
-  return '';
-};
-
-const apiKey = getApiKey();
-// Only initialize if we have a key or handled safely. 
-// Note: Requests will fail without a key, but app shouldn't crash on load.
-const ai = new GoogleGenAI({ apiKey: apiKey || 'dummy-key' });
+// Initialize Gemini API with named parameter as required
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 export const generateBotResponse = async (
   botType: BotType,
   userMessage: string,
   chatHistory: Message[] = []
 ): Promise<string> => {
-  if (!apiKey) {
-    return "Error: API Key not configured in environment.";
-  }
-
   const botConfig = BOTS[botType];
   
-  // Use search tool for Helper bot
+  // Use search tool for Helper bot. Use gemini-3-flash-preview for general text tasks.
   const tools = botType === BotType.HELPER ? [{ googleSearch: {} }] : undefined;
-  const modelId = 'gemini-2.5-flash'; 
+  const modelId = 'gemini-3-flash-preview'; 
 
   try {
     let prompt = userMessage;
@@ -75,11 +61,9 @@ export const generateBotResponse = async (
 };
 
 export const checkModeration = async (text: string): Promise<{ safe: boolean; reason?: string }> => {
-  if (!apiKey) return { safe: true };
-
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3-flash-preview',
       contents: text,
       config: {
         systemInstruction: BOTS[BotType.MODERATOR].systemInstruction,
@@ -99,12 +83,12 @@ export const checkModeration = async (text: string): Promise<{ safe: boolean; re
 };
 
 export const polishDraft = async (text: string): Promise<string> => {
-  if (!apiKey) return text;
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3-flash-preview',
       contents: `Rewrite the following chat message to be clear, grammatically correct, and engaging (keep it casual but polished): "${text}"`,
     });
+    // Extract text and remove wrapping quotes if present
     return response.text?.replace(/^"|"$/g, '') || text;
   } catch (e) {
     console.error("Polish failed", e);
@@ -113,8 +97,6 @@ export const polishDraft = async (text: string): Promise<string> => {
 };
 
 export const editChatImage = async (base64Image: string, prompt: string): Promise<string | null> => {
-  if (!apiKey) return null;
-
   // Strip header if present to get raw base64
   const base64Data = base64Image.split(',')[1] || base64Image;
   // Detect mime type or default to png
@@ -138,10 +120,12 @@ export const editChatImage = async (base64Image: string, prompt: string): Promis
       }
     });
 
-    // Find image part
-    for (const part of response.candidates![0].content.parts) {
-      if (part.inlineData) {
-         return `data:${part.inlineData.mimeType || 'image/png'};base64,${part.inlineData.data}`;
+    // Find image part in candidates
+    if (response.candidates?.[0]?.content?.parts) {
+      for (const part of response.candidates[0].content.parts) {
+        if (part.inlineData) {
+           return `data:${part.inlineData.mimeType || 'image/png'};base64,${part.inlineData.data}`;
+        }
       }
     }
     return null;
