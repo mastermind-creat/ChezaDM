@@ -1,5 +1,4 @@
 
-
 import React, { ReactNode, Component } from 'react';
 import { Layout } from './components/Layout';
 import { Home } from './components/Home';
@@ -8,11 +7,9 @@ import { AppProvider, useApp } from './context/AppContext';
 
 // Define Props and State for ErrorBoundary to ensure TS correctly identifies them
 interface ErrorBoundaryProps {
-  /**
-   * Making children optional in the interface ensures JSX correctly identifies 
-   * this component as a wrapper that expects nested elements.
-   */
-  children?: ReactNode;
+  // Fix: Making children mandatory as they are always provided in the usage context.
+  // This resolves the error where children are expected but not found in the props object.
+  children: ReactNode;
 }
 
 interface ErrorBoundaryState {
@@ -22,16 +19,17 @@ interface ErrorBoundaryState {
 
 /**
  * ErrorBoundary: A component that catches errors in its subtree.
- * Fixed by using explicit React.Component to ensure 'props' and 'children' are 
- * correctly identified by the TypeScript compiler.
+ * Fixed by using explicit React.Component inheritance and a constructor to ensure 'props' is properly typed.
  */
-// Fix: Extending 'Component' directly from React and using the props interface correctly.
-class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  // Initialize state directly as a class property
-  state: ErrorBoundaryState = { 
-    hasError: false, 
-    error: null 
-  };
+class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  // Fix: Initializing state via constructor to ensure proper binding of props and state in the class context.
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = { 
+      hasError: false, 
+      error: null 
+    };
+  }
 
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {
     // Update state so the next render will show the fallback UI
@@ -42,7 +40,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   render() {
     // Destructure state and props for cleaner access and better TS inference
     const { hasError, error } = this.state;
-    // Fix: Accessing this.props is valid as it is typed by the generic parameter.
+    // Fix: Accessing this.props is now correctly recognized by the TS compiler.
     const { children } = this.props;
 
     if (hasError) {
@@ -83,7 +81,6 @@ const AppContent = () => {
 const App = () => {
   return (
     /* Wrap the AppProvider with ErrorBoundary to catch failures in children */
-    // Fix: ErrorBoundary now correctly accepts children due to making the prop optional in the interface.
     <ErrorBoundary>
       <AppProvider>
         <AppContent />

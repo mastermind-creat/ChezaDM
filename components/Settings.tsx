@@ -18,14 +18,13 @@ const fileToBase64 = (file: File): Promise<string> => {
 };
 
 export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
-  const { theme, setAppTheme, currentUser, updateUser, chatBg, setChatBg } = useApp();
+  const { theme, setAppTheme, currentUser, updateUser, chatBg, setChatBg, logout } = useApp();
   const [profileName, setProfileName] = useState(currentUser?.name || '');
   const [waConfig, setWaConfig] = useState(currentUser?.whatsappBot || { apiKey: '', webhookUrl: '', enabled: false });
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
   const t = THEMES[theme];
 
-  // Auto-save name on blur to feel more dynamic
   const handleNameBlur = () => {
     if (profileName.trim() !== currentUser?.name) {
       updateUser({ name: profileName.trim() });
@@ -174,13 +173,19 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
             )}
           </section>
 
-          <div className="sticky bottom-0 pt-4 bg-inherit pb-4">
+          <div className="sticky bottom-0 pt-4 bg-inherit pb-4 space-y-4">
             <button 
               onClick={handleSaveAll}
               className="w-full py-5 bg-cheza-blue text-white font-black text-xl rounded-[2rem] shadow-2xl transform active:scale-95 transition-all hover:bg-blue-600 flex items-center justify-center space-x-3"
             >
               <span>APPLY CHANGES</span>
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+            </button>
+            <button 
+              onClick={logout}
+              className={`w-full py-3 bg-red-500/10 text-red-500 font-black text-xs uppercase tracking-widest rounded-2xl border border-red-500/20 hover:bg-red-500/20 transition-all`}
+            >
+              Logout / Reset Profile
             </button>
           </div>
         </div>

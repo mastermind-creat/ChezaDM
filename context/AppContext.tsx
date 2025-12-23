@@ -10,6 +10,7 @@ interface AppContextType {
   currentRoom: Room | null;
   messages: Message[];
   login: (name: string, avatarUrl?: string) => void;
+  logout: () => void;
   updateUser: (updates: Partial<User>) => void;
   createRoom: (type: RoomType) => void;
   joinRoom: (roomId: string) => void;
@@ -53,7 +54,15 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     try {
       const savedUser = localStorage.getItem('cheza_user');
-      if (savedUser) setCurrentUser(JSON.parse(savedUser));
+      if (savedUser) {
+        let user = JSON.parse(savedUser);
+        // Migration: If the stored ID is long (UUID style), reset it to a Short ID
+        if (user.id && user.id.length > 10) {
+          user.id = generateShortID();
+          localStorage.setItem('cheza_user', JSON.stringify(user));
+        }
+        setCurrentUser(user);
+      }
       const savedTheme = localStorage.getItem('cheza_theme') as ThemeType;
       if (savedTheme) setTheme(savedTheme);
       const savedBg = localStorage.getItem('cheza_chat_bg');
@@ -72,7 +81,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     if (!currentUser) return;
-    // We use the user's ID as their Peer ID for simplicity
     peerInstance.current = new Peer(currentUser.id, {
       debug: 1,
       config: { 'iceServers': [{ 'urls': 'stun:stun.l.google.com:19302' }, { 'urls': 'stun:stun1.l.google.com:19302' }] }
@@ -92,7 +100,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     conn.on('open', () => {
       activeConnections.current.set(conn.peer, conn);
       setPeers(prev => [...new Set([...prev, conn.peer])]);
-      // If we are a client joining, we request the room state
       if (!isRoomAdmin) {
         sendSignalToPeer(conn, 'JOIN_REQUEST', { userId: currentUser?.id, name: currentUser?.name });
       }
@@ -169,7 +176,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const login = (name: string, avatarUrl?: string) => {
-    // Generate a short ID for the user to make sharing codes easier
     const user: User = { 
       id: generateShortID(), 
       name: name || 'Guest', 
@@ -178,6 +184,16 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     };
     localStorage.setItem('cheza_user', JSON.stringify(user));
     setCurrentUser(user);
+  };
+
+  const logout = () => {
+    localStorage.removeItem('cheza_user');
+    setCurrentUser(null);
+    setCurrentRoom(null);
+    setMessages([]);
+    setPeers([]);
+    activeConnections.current.forEach(c => c.close());
+    activeConnections.current.clear();
   };
 
   const updateUser = (updates: Partial<User>) => {
@@ -193,7 +209,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const createRoom = (type: RoomType) => {
     if (!currentUser) return;
     setIsConnecting(true);
-    // The Room ID is the host's ID
     const newRoom: Room = { 
       id: currentUser.id, 
       name: type === RoomType.PRIVATE ? "Private Session" : "Group Space", 
@@ -203,7 +218,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       activeBots: [], 
       adminIds: [currentUser.id] 
     };
-    // Immediate state transition for a better feel
     setTimeout(() => { 
       setCurrentRoom(newRoom); 
       setMessages([]); 
@@ -301,7 +315,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <AppContext.Provider value={{ 
-      currentUser, currentRoom, messages, login, updateUser,
+      currentUser, currentRoom, messages, login, logout, updateUser,
       createRoom, joinRoom, leaveRoom, sendMessage, editMessage, deleteMessage,
       addBotToRoom, removeBotFromRoom, addReaction,
       isRoomAdmin, isOnline, peers, sendTypingSignal, typingUsers,
