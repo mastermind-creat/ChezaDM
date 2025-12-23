@@ -117,9 +117,10 @@ export const THEMES: Record<ThemeType, ThemeConfig> = {
 
 export const CHAT_BGS = [
   { id: 'none', url: '', label: 'Clean' },
-  { id: 'rainy', url: 'https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExN3J6eXpwZ3R3Z3B6Z3R3Z3B6Z3R3Z3B6ZyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/26BGD4XaoPO3zTz96/giphy.gif', label: 'Lo-fi Rain' },
-  { id: 'cyberpunk', url: 'https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3h2cnB2amZqOHZnb3p1ZzVndndzZzRyeGZ4eWZ4eWZ4eWZ4eWZ4ZSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/Lp9pyC5h0N984/giphy.gif', label: 'Cyber City' },
-  { id: 'space', url: 'https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExenF2bnJ2amZqOHZnb3p1ZzVndndzZzRyeGZ4eWZ4eWZ4eWZ4eWZ4ZSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3o7TKMGpxSOfy/giphy.gif', label: 'Deep Space' },
-  { id: 'matrix_flow', url: 'https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExcm5vMzl5emh5eHJtZzN6Z3R3Z3B6Z3R3Z3B6Z3R3Z3B6ZyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/A06UFEx8jLU7m/giphy.gif', label: 'Digital Rain' },
-  { id: 'aesthetic', url: 'https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExNHUxd2pndnd6Z3R3Z3B6Z3R3Z3B6Z3R3Z3B6ZyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/VseX2p2WvTGlW/giphy.gif', label: 'Anime Cloud' }
+  { id: 'luxe_gold', url: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExOHpwaG54Znp3b3J4eWZ4eWZ4eWZ4eWZ4eWZ4eWZ4eWZ4ZSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3o7TKVUn7iM8FMEU24/giphy.gif', label: 'Luxe Gold' },
+  { id: 'crystal_frost', url: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExenF2bnJ2amZqOHZnb3p1ZzVndndzZzRyeGZ4eWZ4eWZ4eWZ4eWZ4ZSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/vA5mj9v6Me5tS/giphy.gif', label: 'Crystal Frost' },
+  { id: 'deep_nebula', url: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExbmZ0bm56eXhjZ3R3Z3B6Z3R3Z3B6Z3R3Z3B6ZyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3o7TKv6FeYpXmG9WdW/giphy.gif', label: 'Deep Nebula' },
+  { id: 'silk_flow', url: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExNHUxd2pndnd6Z3R3Z3B6Z3R3Z3B6Z3R3Z3B6ZyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/VseX2p2WvTGlW/giphy.gif', label: 'Silk Flow' },
+  { id: 'cyber_neon', url: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExcm5vMzl5emh5eHJtZzN6Z3R3Z3B6Z3R3Z3B6Z3R3Z3B6ZyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/A06UFEx8jLU7m/giphy.gif', label: 'Cyber Neon' },
+  { id: 'aura', url: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExNXpwaG54Znp3b3J4eWZ4eWZ4eWZ4eWZ4eWZ4eWZ4eWZ4ZSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/l41lTfO7K9L2x1rCE/giphy.gif', label: 'Aura Glow' }
 ];

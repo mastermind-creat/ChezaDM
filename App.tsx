@@ -1,4 +1,5 @@
 
+
 import React, { ReactNode, Component } from 'react';
 import { Layout } from './components/Layout';
 import { Home } from './components/Home';
@@ -7,7 +8,10 @@ import { AppProvider, useApp } from './context/AppContext';
 
 // Define Props and State for ErrorBoundary to ensure TS correctly identifies them
 interface ErrorBoundaryProps {
-  // Marking children as optional to satisfy JSX type checking when used as a wrapper component
+  /**
+   * Making children optional in the interface ensures JSX correctly identifies 
+   * this component as a wrapper that expects nested elements.
+   */
   children?: ReactNode;
 }
 
@@ -18,8 +22,10 @@ interface ErrorBoundaryState {
 
 /**
  * ErrorBoundary: A component that catches errors in its subtree.
- * Fixed to extend Component correctly and handle children prop visibility in TS.
+ * Fixed by using explicit React.Component to ensure 'props' and 'children' are 
+ * correctly identified by the TypeScript compiler.
  */
+// Fix: Extending 'Component' directly from React and using the props interface correctly.
 class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   // Initialize state directly as a class property
   state: ErrorBoundaryState = { 
@@ -34,14 +40,18 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
 
   // Handle rendering of either the error fallback or the normal children
   render() {
-    // Correctly access state properties
-    if (this.state.hasError) {
+    // Destructure state and props for cleaner access and better TS inference
+    const { hasError, error } = this.state;
+    // Fix: Accessing this.props is valid as it is typed by the generic parameter.
+    const { children } = this.props;
+
+    if (hasError) {
       return (
         <div className="flex flex-col items-center justify-center h-screen p-6 bg-red-50 text-red-900 text-center">
           <h1 className="text-2xl font-bold mb-2">Something went wrong 😓</h1>
           <p className="mb-4">We encountered an unexpected error.</p>
           <pre className="bg-red-100 p-3 rounded text-xs overflow-auto max-w-full text-left mb-4">
-            {this.state.error?.message}
+            {error?.message}
           </pre>
           <button 
             onClick={() => {
@@ -55,8 +65,8 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
         </div>
       );
     }
-    // Return children from props, which is correctly typed in inherited Component class
-    return this.props.children;
+    // Return children from props when no error is caught
+    return children;
   }
 }
 
@@ -73,6 +83,7 @@ const AppContent = () => {
 const App = () => {
   return (
     /* Wrap the AppProvider with ErrorBoundary to catch failures in children */
+    // Fix: ErrorBoundary now correctly accepts children due to making the prop optional in the interface.
     <ErrorBoundary>
       <AppProvider>
         <AppContent />
