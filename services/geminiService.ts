@@ -3,8 +3,8 @@ import { GoogleGenAI } from "@google/genai";
 import { BotType, Message } from "../types";
 import { BOTS } from "../constants";
 
-// Helper to get AI instance safely
-const getAI = () => new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+// Helper to get AI instance safely using process.env.API_KEY directly as required by guidelines
+const getAI = () => new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 export const generateBotResponse = async (
   botType: BotType,
@@ -38,6 +38,7 @@ export const generateBotResponse = async (
       },
     });
 
+    // Access the text property directly on the response object
     let textResponse = response.text || "...";
 
     if (botType === BotType.HELPER && response.candidates?.[0]?.groundingMetadata?.groundingChunks) {

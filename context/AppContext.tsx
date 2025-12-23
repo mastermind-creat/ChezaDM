@@ -1,7 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
 import { User, Room, Message, MessageType, RoomType, BotType, MessageStatus, P2PSignal, SignalType, ThemeType } from '../types';
-import { generateUUID } from '../utils';
+import { generateUUID, generateShortID } from '../utils';
 
 declare var Peer: any;
 
@@ -72,13 +72,18 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     if (!currentUser) return;
+    // We use the user's ID as their Peer ID for simplicity
     peerInstance.current = new Peer(currentUser.id, {
       debug: 1,
       config: { 'iceServers': [{ 'urls': 'stun:stun.l.google.com:19302' }, { 'urls': 'stun:stun1.l.google.com:19302' }] }
     });
     peerInstance.current.on('connection', setupConnection);
     peerInstance.current.on('error', (err: any) => {
-      if (isConnecting) { setConnectionError("Peer error: " + err.type); setIsConnecting(false); }
+      console.error("PeerJS Error:", err);
+      if (isConnecting) { 
+        setConnectionError("Room not found or offline."); 
+        setIsConnecting(false); 
+      }
     });
     return () => peerInstance.current?.destroy();
   }, [currentUser?.id]);
@@ -87,7 +92,10 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     conn.on('open', () => {
       activeConnections.current.set(conn.peer, conn);
       setPeers(prev => [...new Set([...prev, conn.peer])]);
-      if (!isRoomAdmin) sendSignalToPeer(conn, 'JOIN_REQUEST', { userId: currentUser?.id, name: currentUser?.name });
+      // If we are a client joining, we request the room state
+      if (!isRoomAdmin) {
+        sendSignalToPeer(conn, 'JOIN_REQUEST', { userId: currentUser?.id, name: currentUser?.name });
+      }
     });
     conn.on('data', (data: P2PSignal) => handleIncomingSignal(data, conn));
     conn.on('close', () => {
@@ -99,7 +107,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const handleIncomingSignal = (signal: P2PSignal, conn: any) => {
     switch (signal.type) {
       case 'JOIN_REQUEST':
-        if (isRoomAdmin) sendSignalToPeer(conn, 'JOIN_ACCEPTED', { room: currentRoom, history: messages });
+        if (isRoomAdmin) {
+           sendSignalToPeer(conn, 'JOIN_ACCEPTED', { room: currentRoom, history: messages });
+        }
         break;
       case 'JOIN_ACCEPTED':
         if (isConnecting) {
@@ -159,7 +169,13 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const login = (name: string, avatarUrl?: string) => {
-    const user: User = { id: generateUUID(), name: name || 'Guest', isAnonymous: !name, avatarUrl: avatarUrl || `https://api.dicebear.com/9.x/avataaars/svg?seed=${name}` };
+    // Generate a short ID for the user to make sharing codes easier
+    const user: User = { 
+      id: generateShortID(), 
+      name: name || 'Guest', 
+      isAnonymous: !name, 
+      avatarUrl: avatarUrl || `https://api.dicebear.com/9.x/avataaars/svg?seed=${name}` 
+    };
     localStorage.setItem('cheza_user', JSON.stringify(user));
     setCurrentUser(user);
   };
@@ -177,32 +193,68 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const createRoom = (type: RoomType) => {
     if (!currentUser) return;
     setIsConnecting(true);
-    const newRoom: Room = { id: currentUser.id, name: type === RoomType.PRIVATE ? "Private Session" : "Group Space", type, createdBy: currentUser.id, createdAt: Date.now(), activeBots: [], adminIds: [currentUser.id] };
-    setTimeout(() => { setCurrentRoom(newRoom); setMessages([]); setIsConnecting(false); }, 1000);
+    // The Room ID is the host's ID
+    const newRoom: Room = { 
+      id: currentUser.id, 
+      name: type === RoomType.PRIVATE ? "Private Session" : "Group Space", 
+      type, 
+      createdBy: currentUser.id, 
+      createdAt: Date.now(), 
+      activeBots: [], 
+      adminIds: [currentUser.id] 
+    };
+    // Immediate state transition for a better feel
+    setTimeout(() => { 
+      setCurrentRoom(newRoom); 
+      setMessages([]); 
+      setIsConnecting(false); 
+    }, 600);
   };
 
   const joinRoom = (roomId: string) => {
     if (!currentUser || !peerInstance.current) return;
-    setIsConnecting(true); setConnectionError(null);
-    const conn = peerInstance.current.connect(roomId);
+    const cleanId = roomId.trim().toUpperCase();
+    setIsConnecting(true); 
+    setConnectionError(null);
+    const conn = peerInstance.current.connect(cleanId, { reliable: true });
     setupConnection(conn);
-    setTimeout(() => { if (isConnecting && !currentRoom) { setIsConnecting(false); setConnectionError("Host unavailable."); } }, 10000);
+    
+    const timeout = setTimeout(() => { 
+      if (!activeConnections.current.has(cleanId)) {
+        setIsConnecting(false); 
+        setConnectionError("Could not find peer. Check the code."); 
+      }
+    }, 8000);
+    
+    return () => clearTimeout(timeout);
   };
 
   const leaveRoom = () => {
-    activeConnections.current.forEach(c => c.close()); activeConnections.current.clear();
-    setCurrentRoom(null); setMessages([]); setPeers([]); setTypingUsers({}); setIsConnecting(false);
+    activeConnections.current.forEach(c => c.close()); 
+    activeConnections.current.clear();
+    setCurrentRoom(null); 
+    setMessages([]); 
+    setPeers([]); 
+    setTypingUsers({}); 
+    setIsConnecting(false);
   };
 
   const sendMessage = (content: string, type: MessageType = MessageType.TEXT, replyTo?: string) => {
     if (!currentUser || !currentRoom) return;
-    const msg: Message = { id: generateUUID(), roomId: currentRoom.id, senderId: currentUser.id, senderName: currentUser.name, content, timestamp: Date.now(), type, status: MessageStatus.SENT, reactions: {}, replyTo };
+    const msg: Message = { 
+      id: generateUUID(), 
+      roomId: currentRoom.id, 
+      senderId: currentUser.id, 
+      senderName: currentUser.name, 
+      content, 
+      timestamp: Date.now(), 
+      type, 
+      status: MessageStatus.SENT, 
+      reactions: {}, 
+      replyTo 
+    };
     setMessages(prev => [...prev, msg]);
     sendSignalToAll('CHAT_MESSAGE', msg);
-    // WhatsApp Forward Simulation
-    if (currentUser.whatsappBot?.enabled) {
-      console.log("Forwarding to WhatsApp:", currentUser.whatsappBot.webhookUrl, content);
-    }
   };
 
   const editMessage = (id: string, content: string) => {
@@ -232,10 +284,14 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     sendSignalToAll('REACTION', { messageId, emoji });
   };
 
-  const addBotToRoom = (botType: BotType) => { if (currentRoom) setCurrentRoom({ ...currentRoom, activeBots: [...currentRoom.activeBots, botType] }); };
-  const removeBotFromRoom = (botType: BotType) => { if (currentRoom) setCurrentRoom({ ...currentRoom, activeBots: currentRoom.activeBots.filter(b => b !== botType) }); };
+  const addBotToRoom = (botType: BotType) => { 
+    if (currentRoom) setCurrentRoom({ ...currentRoom, activeBots: [...currentRoom.activeBots, botType] }); 
+  };
+  
+  const removeBotFromRoom = (botType: BotType) => { 
+    if (currentRoom) setCurrentRoom({ ...currentRoom, activeBots: currentRoom.activeBots.filter(b => b !== botType) }); 
+  };
 
-  // Fix: Defined sendTypingSignal to resolve shorthand property error in context provider
   const sendTypingSignal = (isTyping: boolean) => {
     if (!currentUser) return;
     sendSignalToAll('TYPING_INDICATOR', { isTyping, userName: currentUser.name });

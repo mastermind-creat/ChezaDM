@@ -7,8 +7,8 @@ import { AppProvider, useApp } from './context/AppContext';
 
 // Define Props and State for ErrorBoundary to ensure TS correctly identifies them
 interface ErrorBoundaryProps {
-  // Explicitly defining children as required to satisfy React component type expectations in JSX
-  children: ReactNode;
+  // Marking children as optional to satisfy JSX type checking when used as a wrapper component
+  children?: ReactNode;
 }
 
 interface ErrorBoundaryState {
@@ -16,8 +16,11 @@ interface ErrorBoundaryState {
   error: Error | null;
 }
 
-// Fixed ErrorBoundary: Use React.Component to ensure props and state properties are correctly inherited
-class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+/**
+ * ErrorBoundary: A component that catches errors in its subtree.
+ * Fixed to extend Component correctly and handle children prop visibility in TS.
+ */
+class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   // Initialize state directly as a class property
   state: ErrorBoundaryState = { 
     hasError: false, 
@@ -29,9 +32,9 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
     return { hasError: true, error };
   }
 
-  // Removed 'override' keyword as inheritance detection was failing in the current environment
+  // Handle rendering of either the error fallback or the normal children
   render() {
-    // Correctly access state from the base React.Component class
+    // Correctly access state properties
     if (this.state.hasError) {
       return (
         <div className="flex flex-col items-center justify-center h-screen p-6 bg-red-50 text-red-900 text-center">
@@ -52,7 +55,7 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
         </div>
       );
     }
-    // Correctly access props to return children, resolving the 'props' property error
+    // Return children from props, which is correctly typed in inherited Component class
     return this.props.children;
   }
 }

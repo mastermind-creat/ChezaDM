@@ -74,32 +74,32 @@ export const THEMES: Record<ThemeType, ThemeConfig> = {
     border: 'border-[#313d45]'
   },
   kenya: {
-    bg: 'bg-[#FAF3E0]',
+    bg: 'bg-[#f8f5f0]',
     text: 'text-stone-900',
     accent: 'bg-[#E1302A]',
     card: 'bg-white',
-    bubbleMe: 'bg-[#E1302A] text-white',
-    bubbleThem: 'bg-[#006600] text-white',
+    bubbleMe: 'bg-[#E1302A] text-white shadow-lg shadow-red-500/20',
+    bubbleThem: 'bg-[#006600] text-white shadow-lg shadow-green-500/20',
     input: 'bg-white',
     border: 'border-[#E1302A]/20'
   },
   midnight: {
-    bg: 'bg-[#0F172A]',
+    bg: 'bg-[#020617]',
     text: 'text-slate-100',
     accent: 'bg-indigo-500',
-    card: 'bg-slate-800',
-    bubbleMe: 'bg-indigo-600 text-white',
-    bubbleThem: 'bg-slate-700 text-slate-100',
-    input: 'bg-slate-900',
-    border: 'border-slate-700'
+    card: 'bg-slate-900/80',
+    bubbleMe: 'bg-indigo-600 text-white shadow-xl shadow-indigo-500/10',
+    bubbleThem: 'bg-slate-800 text-slate-100 border border-slate-700',
+    input: 'bg-slate-950',
+    border: 'border-slate-800'
   },
   sunset: {
-    bg: 'bg-[#FEF2F2]',
+    bg: 'bg-[#fff5f5]',
     text: 'text-orange-950',
     accent: 'bg-orange-500',
-    card: 'bg-white',
-    bubbleMe: 'bg-orange-500 text-white',
-    bubbleThem: 'bg-rose-100 text-orange-950',
+    card: 'bg-white/80',
+    bubbleMe: 'bg-gradient-to-br from-orange-500 to-rose-500 text-white',
+    bubbleThem: 'bg-orange-50 text-orange-950 border border-orange-100',
     input: 'bg-white',
     border: 'border-orange-100'
   },
@@ -107,19 +107,19 @@ export const THEMES: Record<ThemeType, ThemeConfig> = {
     bg: 'bg-black',
     text: 'text-green-500',
     accent: 'bg-green-600',
-    card: 'bg-[#0a0a0a]',
-    bubbleMe: 'bg-green-900/40 text-green-300 border border-green-500/50',
-    bubbleThem: 'bg-zinc-900/80 text-green-500 border border-green-500/20',
-    input: 'bg-black text-green-500 border-green-500/40',
-    border: 'border-green-500/20'
+    card: 'bg-black/90',
+    bubbleMe: 'bg-green-900/30 text-green-400 border border-green-500/40 shadow-[0_0_15px_rgba(34,197,94,0.1)]',
+    bubbleThem: 'bg-zinc-950 text-green-500 border border-green-900/50',
+    input: 'bg-black text-green-500 border-green-900',
+    border: 'border-green-900/50'
   }
 };
 
 export const CHAT_BGS = [
   { id: 'none', url: '', label: 'Clean' },
-  { id: 'matrix_flow', url: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExcms1Y2l4Mnp0emh5eHJtZzN6Z3R3Z3B6Z3R3Z3B6Z3R3Z3B6ZyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3o7TKSjP8rC3nC9cM8/giphy.gif', label: 'Matrix Code' },
-  { id: 'wa_classic', url: 'https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png', label: 'WhatsApp' },
-  { id: 'cyberpunk', url: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3h2cnB2amZqOHZnb3p1ZzVndndzZzRyeGZ4eWZ4eWZ4eWZ4eWZ4ZSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/Lp9pyC5h0N984/giphy.gif', label: 'Cyber City' },
-  { id: 'nebula', url: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExenF2bnJ2amZqOHZnb3p1ZzVndndzZzRyeGZ4eWZ4eWZ4eWZ4eWZ4ZSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3o7TKMGpxSOfy/giphy.gif', label: 'Nebula' },
-  { id: 'digital_rain', url: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExcm5vMzl5emh5eHJtZzN6Z3R3Z3B6Z3R3Z3B6Z3R3Z3B6ZyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/A06UFEx8jLU7m/giphy.gif', label: 'Rainy Day' }
+  { id: 'rainy', url: 'https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExN3J6eXpwZ3R3Z3B6Z3R3Z3B6Z3R3Z3B6ZyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/26BGD4XaoPO3zTz96/giphy.gif', label: 'Lo-fi Rain' },
+  { id: 'cyberpunk', url: 'https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3h2cnB2amZqOHZnb3p1ZzVndndzZzRyeGZ4eWZ4eWZ4eWZ4eWZ4ZSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/Lp9pyC5h0N984/giphy.gif', label: 'Cyber City' },
+  { id: 'space', url: 'https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExenF2bnJ2amZqOHZnb3p1ZzVndndzZzRyeGZ4eWZ4eWZ4eWZ4eWZ4ZSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3o7TKMGpxSOfy/giphy.gif', label: 'Deep Space' },
+  { id: 'matrix_flow', url: 'https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExcm5vMzl5emh5eHJtZzN6Z3R3Z3B6Z3R3Z3B6Z3R3Z3B6ZyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/A06UFEx8jLU7m/giphy.gif', label: 'Digital Rain' },
+  { id: 'aesthetic', url: 'https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExNHUxd2pndnd6Z3R3Z3B6Z3R3Z3B6Z3R3Z3B6ZyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/VseX2p2WvTGlW/giphy.gif', label: 'Anime Cloud' }
 ];
